@@ -33,15 +33,15 @@ class Dataset1DArticle(GeoDataset):
         acquire.dt = 0.0008
         acquire.NT = 2560
         acquire.resampling = 10
-        acquire.dg = 6
-        acquire.gmin = acquire.Npad + 4 * acquire.dg
+        acquire.dg = 12
+        acquire.gmin = acquire.Npad + 4*acquire.dg
         acquire.gmax = model.NX - acquire.gmin - acquire.Npad
         acquire.peak_freq = 26
         acquire.df = 5
         acquire.wavefuns = [0, 1]
-        acquire.source_depth = (acquire.Npad + 4) * dh
-        acquire.receiver_depth = (acquire.Npad + 4) * dh
-        acquire.tdelay = 2.0 / (acquire.peak_freq - acquire.df)
+        acquire.source_depth = (acquire.Npad+4) * dh
+        acquire.receiver_depth = (acquire.Npad+4) * dh
+        acquire.tdelay = 2.0 / (acquire.peak_freq-acquire.df)
         acquire.singleshot = True
 
         inputs = {ShotGather.name: ShotGather(model=model, acquire=acquire)}
@@ -84,7 +84,7 @@ class Dataset2DArticle(Dataset1DArticle):
         model.dip_max = 10
         model.ddip_max = 4
 
-        acquire.ds = 12
+        acquire.ds = 24
         acquire.singleshot = False
 
         return model, acquire, inputs, outputs
