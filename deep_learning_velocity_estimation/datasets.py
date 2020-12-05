@@ -4,16 +4,16 @@
 from GeoFlow.GeoDataset import GeoDataset
 from GeoFlow.EarthModel import MarineModel
 from GeoFlow.SeismicGenerator import Acquisition
-from GeoFlow.GraphIO import (Reftime, Vrms, Vint, Vdepth, ShotGather)
+from GeoFlow.GraphIO import Reftime, Vrms, Vint, Vdepth, ShotGather
 
 
-class Dataset2Dtest(GeoDataset):
-    name = "Dataset2Dtest"
+class Dataset1DArticle(GeoDataset):
+    name = "Dataset1DArticle"
 
     def set_dataset(self):
-        self.trainsize = 10
+        self.trainsize = 10000
         self.validatesize = 0
-        self.testsize = 0
+        self.testsize = 100
 
         model = MarineModel()
         model.NX = 500
@@ -28,20 +28,12 @@ class Dataset2Dtest(GeoDataset):
         model.water_vmax = 1560
         model.vp_min = 1300.0
         model.vp_max = 4000.0
-        model.max_deform_freq = 0.06
-        model.min_deform_freq = 0.0001
-        model.amp_max = 8
-        model.max_deform_nfreq = 40
-        model.prob_deform_change = 0.7
-        model.dip_max = 10
-        model.ddip_max = 4
 
         acquire = Acquisition(model=model)
         acquire.dt = 0.0008
         acquire.NT = 2560
         acquire.resampling = 10
         acquire.dg = 6
-        acquire.ds = 12
         acquire.gmin = acquire.Npad + 4 * acquire.dg
         acquire.gmax = model.NX - acquire.gmin - acquire.Npad
         acquire.peak_freq = 26
@@ -50,7 +42,7 @@ class Dataset2Dtest(GeoDataset):
         acquire.source_depth = (acquire.Npad + 4) * dh
         acquire.receiver_depth = (acquire.Npad + 4) * dh
         acquire.tdelay = 2.0 / (acquire.peak_freq - acquire.df)
-        acquire.singleshot = False
+        acquire.singleshot = True
 
         inputs = {ShotGather.name: ShotGather(model=model, acquire=acquire)}
         outputs = {Reftime.name: Reftime(model=model, acquire=acquire),
@@ -78,6 +70,26 @@ class Dataset2Dtest(GeoDataset):
                 self.inputs[name].random_noise_max = 0.02
 
 
+class Dataset2DArticle(Dataset1DArticle):
+    name = "Dataset2DArticle"
+
+    def set_dataset(self):
+        model, acquire, inputs, outputs = super().set_dataset()
+
+        model.max_deform_freq = 0.06
+        model.min_deform_freq = 0.0001
+        model.amp_max = 8
+        model.max_deform_nfreq = 40
+        model.prob_deform_change = 0.7
+        model.dip_max = 10
+        model.ddip_max = 4
+
+        acquire.ds = 12
+        acquire.singleshot = False
+
+        return model, acquire, inputs, outputs
+
+
 class Mercier(GeoDataset):
     name = "Mercier"
 
@@ -88,3 +100,11 @@ class Mercier(GeoDataset):
         self.testsize = 10
 
         return model, acquire, label
+
+
+if __name__ == "__main__":
+    dataset = Dataset1DArticle()
+    dataset.model.animated_dataset()
+
+    dataset = Dataset2DArticle()
+    dataset.model.animated_dataset()
