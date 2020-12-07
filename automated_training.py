@@ -33,6 +33,8 @@ parser.add_argument(
     help="Run the Keras model eagerly, for debugging.",
 )
 args, config = parser.parse_known_args()
+config = {name[2:]: value for name, value
+          in zip(config[::2], config[1::2])}
 
 args.dataset = getattr(datasets, args.dataset)()
 args.params = getattr(architecture, args.params)()
@@ -46,7 +48,7 @@ optimize(
     params=args.params,
     dataset=args.dataset,
     ngpu=2,
-    config=config,
     debug=args.debug,
     eager=args.eager,
+    **config,
 )
