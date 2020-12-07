@@ -37,6 +37,10 @@ args, config = parser.parse_known_args()
 args.dataset = getattr(datasets, args.dataset)()
 args.params = getattr(architecture, args.params)()
 
+if args.debug:
+    config["epochs"] = 1
+    config["steps_per_epoch"] = 5
+
 optimize(
     architecture=RCNN2D,
     params=args.params,
