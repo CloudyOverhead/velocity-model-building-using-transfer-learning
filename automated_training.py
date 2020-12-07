@@ -3,22 +3,46 @@
 
 from argparse import ArgumentParser
 
-from GeoFlow.AutomatedTraining.AutomatedTraining import optimize
+from AutomatedTraining.AutomatedTraining import optimize
 
 from deep_learning_velocity_estimation import datasets, architecture
 from deep_learning_velocity_estimation.architecture import RCNN2D
 
 
 parser = ArgumentParser()
-parser.add_argument("--params")
-parser.add_argument("--dataset")
-args = parser.parse_args()
+parser.add_argument(
+    "--params",
+    type=str,
+    default="Hyperparameters",
+    help="Name of hyperparameters from `RCNN2D` to use.",
+)
+parser.add_argument(
+    "--dataset",
+    type=str,
+    default="Dataset1Dsmall",
+    help="Name of dataset from `DefinedDataset` to use.",
+)
+parser.add_argument(
+    "--debug",
+    action='store_true',
+    help="Generate a small dataset of 5 examples.",
+)
+parser.add_argument(
+    "--eager",
+    action='store_true',
+    help="Run the Keras model eagerly, for debugging.",
+)
+args, config = parser.parse_known_args()
 
-args.params = getattr(architecture, args.params)()
 args.dataset = getattr(datasets, args.dataset)()
+args.params = getattr(architecture, args.params)()
+
 optimize(
     architecture=RCNN2D,
     params=args.params,
     dataset=args.dataset,
     ngpu=2,
+    config=config,
+    debug=args.debug,
+    eager=args.eager,
 )
