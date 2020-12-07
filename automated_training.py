@@ -20,4 +20,5 @@ optimize(
     architecture=RCNN2D,
     params=args.params,
     dataset=args.dataset,
+    ngpu=2,
 )
