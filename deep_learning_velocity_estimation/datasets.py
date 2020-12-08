@@ -51,6 +51,7 @@ class Dataset1DArticle(GeoDataset):
                    Vdepth.name: Vdepth(model=model, acquire=acquire)}
         for name in inputs:
             inputs[name].train_on_shots = True
+            inputs[name].mute_dir = True
         for name in outputs:
             outputs[name].train_on_shots = True
             outputs[name].identify_direct = False
