@@ -16,7 +16,7 @@ REQUIREMENTS = [
     GITHUB_REQUIREMENT.format(
         author="gfabieno",
         name="ModelGenerator",
-        version="a01cbb93d67a6c859ea6ac67ea55361208b66e7c",
+        version="v0.1.1",
     ),
     GITHUB_REQUIREMENT.format(
         author="gfabieno",
