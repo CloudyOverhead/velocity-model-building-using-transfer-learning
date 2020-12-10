@@ -21,7 +21,7 @@ REQUIREMENTS = [
     GITHUB_REQUIREMENT.format(
         author="gfabieno",
         name="Deep_2D_velocity",
-        version="f4b0031cae1e3ae21e5eb881af7c7ef22e4f56f0",
+        version="803ddd72b43dcac843a6e9db7529221ce91a7786",
     ),
 ]
 

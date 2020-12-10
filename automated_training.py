@@ -44,7 +44,7 @@ if args.debug:
     config["steps_per_epoch"] = 5
 
 optimize(
-    architecture=RCNN2D,
+    nn=RCNN2D,
     params=args.params,
     dataset=args.dataset,
     ngpu=2,

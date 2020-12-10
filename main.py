@@ -27,23 +27,23 @@ if __name__ == "__main__":
 
     # Add arguments to parse for training.
     parser.add_argument(
-        "--architecture",
+        "--nn",
         type=str,
         default="RCNN2D",
-        help="Name of the architecture from `RCNN2D` to use.",
+        help="Name of the architecture from `architecture` to use.",
     )
     parser.add_argument(
         "--params",
         type=str,
         default="Hyperparameters",
-        help="Name of hyperparameters from `RCNN2D` to use.",
+        help="Name of hyperparameters from `architecture` to use.",
     )
     parser.add_argument(
         "--dataset",
         type=str,
         default="Dataset1Dsmall",
         help=(
-            "Name of dataset from `deep_learning_velocity_estimation."
+            "Name of dataset from `datasets."
             "datasets` to use."
         ),
     )
@@ -85,7 +85,7 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-    args.architecture = getattr(RCNN2D, args.architecture)
+    args.nn = getattr(RCNN2D, args.nn)
     args.dataset = getattr(datasets, args.dataset)()
     args.params = getattr(RCNN2D, args.params)()
     main(args)
