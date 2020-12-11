@@ -18,8 +18,7 @@ main = main_module.main
 
 
 if __name__ == "__main__":
-    from GeoFlow import RCNN2D
-
+    from deep_learning_velocity_estimation import architecture
     from deep_learning_velocity_estimation import datasets
 
     # Initialize argument parser.
@@ -85,7 +84,7 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-    args.nn = getattr(RCNN2D, args.nn)
+    args.nn = getattr(architecture, args.nn)
     args.dataset = getattr(datasets, args.dataset)()
-    args.params = getattr(RCNN2D, args.params)()
+    args.params = getattr(architecture, args.params)()
     main(args)
