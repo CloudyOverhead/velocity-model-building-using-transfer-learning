@@ -96,7 +96,6 @@ def download_data(save_dir):
 
     for file in dfiles:
         if not isfile(join(save_dir, file)):
-            print(file)
             urlretrieve(dfiles[file], join(save_dir, file))
 
     return fkeys
