@@ -33,7 +33,7 @@ class Dataset1DArticle(GeoDataset):
         acquire.dt = 0.0008
         acquire.NT = 2560
         acquire.resampling = 10
-        acquire.dg = 12
+        acquire.dg = 6
         acquire.gmin = acquire.Npad + 4*acquire.dg
         acquire.gmax = model.NX - acquire.gmin - acquire.Npad
         acquire.peak_freq = 26
@@ -85,7 +85,7 @@ class Dataset2DArticle(Dataset1DArticle):
         model.dip_max = 10
         model.ddip_max = 4
 
-        acquire.ds = 24
+        acquire.ds = 16
         acquire.singleshot = False
 
         return model, acquire, inputs, outputs
