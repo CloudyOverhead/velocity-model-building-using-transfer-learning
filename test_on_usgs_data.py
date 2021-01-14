@@ -41,17 +41,27 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.ndimage as ndimage
 
+# From the observer log, we get the acquisition parameters:
+NT = 3071
+DS = 50  # Shot point spacing.
+DG1 = 100  # Geophone spacing for channels 1-24.
+DG2 = 50  # Geophone spacing for channels 25-48.
+VWATER = 1533
+NG = 72
+DG = 50
+NEAROFF = 470  # Varies for several shots. We take the most common value.
 
-if __name__ == "__main__":
+
+def download_data(save_dir):
     """Download the data."""
-    DATAPATH = "./USGS_line32"
     PREFIX = "http://cotuit.er.usgs.gov/files/1978-015-FA"
+    FILES_PREFIX = "SE/001/18"
+
     files = {
         "32obslog.pdf": join(PREFIX, "NL/001/01/32-obslogs/32obslog.pdf"),
         "report.pdf": "https://pubs.usgs.gov/of/1995/0027/report.pdf",
         "CSDS32_1.SGY": join(PREFIX, "/SE/001/39/CSDS32_1.SGY"),
     }
-    FILES_PREFIX = "SE/001/18"
     dfiles = {
         "U32A_01.SGY": join(PREFIX, FILES_PREFIX, "U32A_01.SGY"),
         "U32A_02.SGY": join(PREFIX, FILES_PREFIX, "U32A_02.SGY"),
@@ -77,26 +87,29 @@ if __name__ == "__main__":
     # "U32A_21.SGY": join(PREFIX, FILES_PREFIX, "U32A_21.SGY")}
 
     fkeys = sorted(list(dfiles.keys()))
-    if not isdir(DATAPATH):
-        mkdir(DATAPATH)
+    if not isdir(save_dir):
+        mkdir(save_dir)
 
     for file in files:
-        if not isfile(join(DATAPATH, file)):
-            urlretrieve(files[file], join(DATAPATH, file))
+        if not isfile(join(save_dir, file)):
+            urlretrieve(files[file], join(save_dir, file))
 
     for file in dfiles:
-        if not isfile(join(DATAPATH, file)):
+        if not isfile(join(save_dir, file)):
             print(file)
-            urlretrieve(dfiles[file], join(DATAPATH, file))
+            urlretrieve(dfiles[file], join(save_dir, file))
 
+    return fkeys
+
+
+def segy_to_numpy(data_dir, fkeys):
     """Read the segy into numpy."""
     data = []
     fid = []
     cid = []
-    NT = 3071
     for file in fkeys:
         print(file)
-        file = join(DATAPATH, file)
+        file = join(data_dir, file)
         with segyio.open(file, "r", ignore_geometry=True) as segy:
             file_data = []
             file_fid = []
@@ -110,8 +123,11 @@ if __name__ == "__main__":
             data.append(file_data)
             fid.append(file_fid)
             cid.append(file_cid)
+    return np.array(data), np.array(fid), np.array(cid)
 
-    """Remove bad shots."""
+
+def preprocess(data, fid, cid, save_path):
+    """Remove or fix bad shots."""
     # Correct `fid`.
     if len(fid) > 16:
         fid[16] = [id if id < 700 else id + 200 for id in fid[16]]
@@ -123,13 +139,13 @@ if __name__ == "__main__":
         fid[7] = fid[7][36:]
         cid[7] = cid[7][36:]
         data[7] = data[7][:, 36:]
-    if len(fid) > 2:  # repeated shots between files 03 and 04
+    if len(fid) > 2:  # Repeated shots between files 03 and 04.
         fid[2] = fid[2][:8872]
         cid[2] = cid[2][:8872]
         data[2] = data[2][:, :8872]
+    data = np.concatenate(data, axis=1)
     fid = np.concatenate(fid)
     cid = np.concatenate(cid)
-    data = np.concatenate(data, axis=1)
 
     # recnoSpn = InterpText()
     # recnoSpn.read('recnoSpn.txt')
@@ -153,7 +169,6 @@ if __name__ == "__main__":
 
     for ii in range(fid.shape[0]):
         fldr = fid[ii]
-        tracf = cid[ii]
 
         if fldr < prev_fldr:
             fldr_bias += 1000
@@ -199,24 +214,19 @@ if __name__ == "__main__":
         )
         data[:, ii] = padded_data[:NT]
 
-    # Open the hdf5 file in which to save the pre-processed data.
-    savefile = h5.File("survey.hdf5", "w")
-    savefile["data"] = data
+    with h5.File(save_path, "w") as savefile:
+        savefile["data"] = data
 
-    """Trace interpolation."""
-    # From the observer log, we get the acquisition parameters:
-    DS = 50  # Shot point spacing.
-    DG1 = 100  # Geophone spacing for channels 1-24.
-    DG2 = 50  # Geophone spacing for channels 25-48.
-    VWATER = 1533
-    NS = data.shape[1] // 48
-    NG = 72
-    dg = 50
-    NEAROFF = 470  # Varies for several shots. We take the most common value.
+    return data, fid, cid
 
-    data_i = np.zeros([data.shape[0], NS*NG])
+
+def interpolate_traces(save_path):
+    """Interpolate traces."""
+    ns = data.shape[1] // 48
+
+    data_i = np.zeros([data.shape[0], ns*NG])
     t0off = 2 * np.sqrt((NEAROFF/2)**2+3000**2) / VWATER
-    for ii in range(NS):
+    for ii in range(ns):
         data_i[:, NG*ii:NG*ii+23] = data[:, ii*48:ii*48+23]
         data_roll = data[:, ii*48+23:(ii+1)*48]
         n = data_roll.shape[1]
@@ -230,17 +240,22 @@ if __name__ == "__main__":
             data_roll[:, jj] = np.roll(data_roll[:, jj], toff//0.004)
         data_i[:, NG*ii+23:NG*(ii+1)] = data_roll[:, :-1]
 
-    savefile['data_i'] = data_i
+    with h5.File(save_path, "w") as savefile:
+        savefile['data_i'] = data_i
 
+    return data_i
+
+
+def sort_cmp(data_interpolated, save_path):
     """Resort accorging to CMP."""
-    NS = data_i.shape[1] // 72
-    shots = np.arange(NEAROFF+NG*dg, NEAROFF+NG*dg+NS*DS, DS)
+    ns = data_interpolated.shape[1] // 72
+    shots = np.arange(NEAROFF+NG*DG, NEAROFF+NG*DG+ns*DS, DS)
     recs = np.concatenate(
-        [np.arange(0, NG*dg, dg)+n*DS for n in range(NS)],
+        [np.arange(0, NG*DG, DG)+n*DS for n in range(ns)],
         axis=0,
     )
     shots = np.repeat(shots, NG)
-    cmps = ((shots+recs)/2/50).astype(int) * 50
+    cmps = ((shots+recs)/2) // 50 * 50
     offsets = shots - recs
 
     ind = np.lexsort((offsets, cmps))
@@ -251,37 +266,46 @@ if __name__ == "__main__":
     ind1 = np.argmax(cmps == firstcmp)
     ind2 = np.argmax(cmps > lastcmp)
     ntraces = cmps[ind1:ind2].shape[0]
-    data_cmp = np.zeros([data_i.shape[0], ntraces])
+    data_cmp = np.zeros([data_interpolated.shape[0], ntraces])
 
     n = 0
     for ii, jj in enumerate(ind):
         if ii >= ind1 and ii < ind2:
-            data_cmp[:, n] = data_i[:, jj]
+            data_cmp[:, n] = data_interpolated[:, jj]
             n += 1
 
-    savefile['data_cmp'] = data_cmp
-    savefile.close()
+    with h5.File(save_path, "w") as savefile:
+        savefile['data_cmp'] = data_cmp
 
-    """Plots for quality control."""
-    # Plot some CMP gather.
-    CLIP = 0.05
-    vmax = np.max(data_cmp[:, 0]) * CLIP
+    return data_cmp
+
+
+def plot(data, clip=.05):
+    """Plot for quality control."""
+    vmax = np.amax(data[:, 0]) * clip
     vmin = -vmax
     plt.imshow(
-        data_cmp[:, :200],
+        data,
         interpolation='bilinear',
-        cmap=plt.get_cmap('Greys'),
-        vmin=vmin, vmax=vmax,
+        cmap='Greys',
+        vmin=vmin,
+        vmax=vmax,
         aspect='auto',
     )
     plt.show()
 
+
+if __name__ == "__main__":
+    SAVE_DIR = "./USGS_line32"
+    PREPROCESSED_DATA_PATH = join(SAVE_DIR, "survey.hdf5")
+
+    fkeys = download_data(SAVE_DIR)
+    data, fid, cid = segy_to_numpy(SAVE_DIR, fkeys)
+    data, fid, cid = preprocess(data, fid, cid, PREPROCESSED_DATA_PATH)
+    data_interpolated = interpolate_traces(PREPROCESSED_DATA_PATH)
+    data_cmp = sort_cmp(data_interpolated, PREPROCESSED_DATA_PATH)
+
+    # Plot some CMP gather.
+    plot(data_cmp[:, :200])
     # Constant offset plot.
-    plt.imshow(
-        data_cmp[:, ::72],
-        interpolation='bilinear',
-        cmap=plt.get_cmap('Greys'),
-        vmin=vmin, vmax=vmax,
-        aspect='auto',
-    )
-    plt.show()
+    plot(data_cmp[:, ::72])
