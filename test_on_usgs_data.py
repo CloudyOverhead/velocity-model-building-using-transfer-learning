@@ -30,66 +30,64 @@ The processed real data is available publicly at
 https://cmgds.marine.usgs.gov/fan_info.php?fan=1978-015-FA
 """
 
-import urllib.request
-import os
+from os import mkdir
+from os.path import join, isfile, isdir
+from urllib.request import urlretrieve
+
 import segyio
+from segyio.TraceField import FieldRecord, TraceNumber
+import h5py as h5
 import numpy as np
 import matplotlib.pyplot as plt
-import h5py as h5
 import scipy.ndimage as ndimage
 
 
 if __name__ == "__main__":
-
-    """
-        __________________Download the data______________________
-    """
-
-    datapath = "./USGS_line32"
-
+    """Download the data."""
+    DATAPATH = "./USGS_line32"
+    PREFIX = "http://cotuit.er.usgs.gov/files/1978-015-FA"
     files = {
-        "32obslog.pdf": "http://cotuit.er.usgs.gov/files/1978-015-FA/NL/001/01/32-obslogs/32obslog.pdf",
+        "32obslog.pdf": join(PREFIX, "NL/001/01/32-obslogs/32obslog.pdf"),
         "report.pdf": "https://pubs.usgs.gov/of/1995/0027/report.pdf",
-        "CSDS32_1.SGY": "http://cotuit.er.usgs.gov/files/1978-015-FA/SE/001/39/CSDS32_1.SGY",
+        "CSDS32_1.SGY": join(PREFIX, "/SE/001/39/CSDS32_1.SGY"),
     }
-
-    PREFIX = "http://cotuit.er.usgs.gov/files/1978-015-FA/SE/001/18/"
+    FILES_PREFIX = "SE/001/18"
     dfiles = {
-        "U32A_01.SGY": PREFIX + "U32A_01.SGY",
-        "U32A_02.SGY": PREFIX + "U32A_02.SGY",
-        "U32A_03.SGY": PREFIX + "U32A_03.SGY",
-        "U32A_04.SGY": PREFIX + "U32A_04.SGY",
-        "U32A_05.SGY": PREFIX + "U32A_05.SGY",
-        "U32A_06.SGY": PREFIX + "U32A_06.SGY",
-        "U32A_07.SGY": PREFIX + "U32A_07.SGY",
-        "U32A_08.SGY": PREFIX + "U32A_08.SGY",
-        "U32A_09.SGY": PREFIX + "U32A_09.SGY",
+        "U32A_01.SGY": join(PREFIX, FILES_PREFIX, "U32A_01.SGY"),
+        "U32A_02.SGY": join(PREFIX, FILES_PREFIX, "U32A_02.SGY"),
+        "U32A_03.SGY": join(PREFIX, FILES_PREFIX, "U32A_03.SGY"),
+        "U32A_04.SGY": join(PREFIX, FILES_PREFIX, "U32A_04.SGY"),
+        "U32A_05.SGY": join(PREFIX, FILES_PREFIX, "U32A_05.SGY"),
+        "U32A_06.SGY": join(PREFIX, FILES_PREFIX, "U32A_06.SGY"),
+        "U32A_07.SGY": join(PREFIX, FILES_PREFIX, "U32A_07.SGY"),
+        "U32A_08.SGY": join(PREFIX, FILES_PREFIX, "U32A_08.SGY"),
+        "U32A_09.SGY": join(PREFIX, FILES_PREFIX, "U32A_09.SGY"),
     }
-    # "U32A_10.SGY": PREFIX + "U32A_10.SGY",
-    # "U32A_11.SGY": PREFIX + "U32A_11.SGY",
-    # "U32A_12.SGY": PREFIX + "U32A_12.SGY",
-    # "U32A_13.SGY": PREFIX + "U32A_13.SGY",
-    # "U32A_14.SGY": PREFIX + "U32A_14.SGY",
-    # "U32A_15.SGY": PREFIX + "U32A_15.SGY",
-    # "U32A_16.SGY": PREFIX + "U32A_16.SGY",
-    # "U32A_17.SGY": PREFIX + "U32A_17.SGY",
-    # "U32A_18.SGY": PREFIX + "U32A_18.SGY",
-    # "U32A_19.SGY": PREFIX + "U32A_19.SGY",
-    # "U32A_20.SGY": PREFIX + "U32A_20.SGY",
-    # "U32A_21.SGY": PREFIX + "U32A_21.SGY"}
+    # "U32A_10.SGY": join(PREFIX, FILES_PREFIX, "U32A_10.SGY"),
+    # "U32A_11.SGY": join(PREFIX, FILES_PREFIX, "U32A_11.SGY"),
+    # "U32A_12.SGY": join(PREFIX, FILES_PREFIX, "U32A_12.SGY"),
+    # "U32A_13.SGY": join(PREFIX, FILES_PREFIX, "U32A_13.SGY"),
+    # "U32A_14.SGY": join(PREFIX, FILES_PREFIX, "U32A_14.SGY"),
+    # "U32A_15.SGY": join(PREFIX, FILES_PREFIX, "U32A_15.SGY"),
+    # "U32A_16.SGY": join(PREFIX, FILES_PREFIX, "U32A_16.SGY"),
+    # "U32A_17.SGY": join(PREFIX, FILES_PREFIX, "U32A_17.SGY"),
+    # "U32A_18.SGY": join(PREFIX, FILES_PREFIX, "U32A_18.SGY"),
+    # "U32A_19.SGY": join(PREFIX, FILES_PREFIX, "U32A_19.SGY"),
+    # "U32A_20.SGY": join(PREFIX, FILES_PREFIX, "U32A_20.SGY"),
+    # "U32A_21.SGY": join(PREFIX, FILES_PREFIX, "U32A_21.SGY")}
 
     fkeys = sorted(list(dfiles.keys()))
-    if not os.path.isdir(datapath):
-        os.mkdir(datapath)
+    if not isdir(DATAPATH):
+        mkdir(DATAPATH)
 
     for file in files:
-        if not os.path.isfile(datapath + "/" + file):
-            urllib.request.urlretrieve(files[file], datapath + "/" + file)
+        if not isfile(join(DATAPATH, file)):
+            urlretrieve(files[file], join(DATAPATH, file))
 
     for file in dfiles:
-        if not os.path.isfile(datapath + "/" + file):
+        if not isfile(join(DATAPATH, file)):
             print(file)
-            urllib.request.urlretrieve(dfiles[file], datapath + "/" + file)
+            urlretrieve(dfiles[file], join(DATAPATH, file))
 
     """Read the segy into numpy."""
     data = []
@@ -98,16 +96,23 @@ if __name__ == "__main__":
     NT = 3071
     for file in fkeys:
         print(file)
-        with segyio.open(datapath + "/" + file, "r", ignore_geometry=True) as segy:
-            fid.append([segy.header[trid][segyio.TraceField.FieldRecord]
-                        for trid in range(segy.tracecount)])
-            cid.append([segy.header[trid][segyio.TraceField.TraceNumber]
-                        for trid in range(segy.tracecount)])
-            data.append(np.transpose(np.array([segy.trace[trid]
-                                               for trid in range(segy.tracecount)]))[:NT, :])
+        file = join(DATAPATH, file)
+        with segyio.open(file, "r", ignore_geometry=True) as segy:
+            file_data = []
+            file_fid = []
+            file_cid = []
+            for trid in range(segy.tracecount):
+                file_data.append(segy.trace[trid])
+                file_fid.append(segy.header[trid][FieldRecord])
+                file_cid.append(segy.header[trid][TraceNumber])
+            file_data = file_data.T
+            file_data = file_data[:NT]
+            data.append(file_data)
+            fid.append(file_fid)
+            cid.append(file_cid)
 
     """Remove bad shots."""
-    # correct fid
+    # Correct `fid`.
     if len(fid) > 16:
         fid[16] = [id if id < 700 else id + 200 for id in fid[16]]
     if len(fid) > 6:
@@ -134,15 +139,17 @@ if __name__ == "__main__":
 
     prev_fldr = -9999
     fldr_bias = 0
-    shot = 0 * cid - 1
-    delrt = 0 * cid - 1
+    shot = np.full_like(cid, -1)
+    delrt = np.full_like(cid, -1)
 
-    notshots = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 211, 213, 225, 279,
-                335, 387, 400, 493, 528, 553, 561, 571,
-                668, 669, 698, 699, 700, 727, 728, 780, 816, 826, 1073, 1219,
-                1253, 1254, 1300, 1301, 1418, 1419, 1527, 1741, 2089, 2170,
-                2303, 2610, 2957, 2980, 3021, 3104, 3167, 3223, 3268, 3476,
-                3707, 3784, 3831, 3934, 4051, 4472, 4671, 4757, 4797]
+    NOT_SHOTS = [
+        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 211, 213, 225, 279,
+        335, 387, 400, 493, 528, 553, 561, 571,
+        668, 669, 698, 699, 700, 727, 728, 780, 816, 826, 1073, 1219,
+        1253, 1254, 1300, 1301, 1418, 1419, 1527, 1741, 2089, 2170,
+        2303, 2610, 2957, 2980, 3021, 3104, 3167, 3223, 3268, 3476,
+        3707, 3784, 3831, 3934, 4051, 4472, 4671, 4757, 4797,
+    ]
 
     for ii in range(fid.shape[0]):
         fldr = fid[ii]
@@ -151,13 +158,11 @@ if __name__ == "__main__":
         if fldr < prev_fldr:
             fldr_bias += 1000
 
-        prev_fldr = fldr
-
         fldr += fldr_bias
-        if fldr not in notshots:
+        if fldr not in NOT_SHOTS:
             shot[ii] = 6102 - fldr
 
-        # The time 0 of different files changes. We prepad with zero so that
+        # The time 0 of different files changes. We prepad with zeros so that
         # all shots begin at time 0.
         if fldr < 15:
             delrt[ii] = 4000
@@ -174,6 +179,8 @@ if __name__ == "__main__":
         else:
             delrt[ii] = 0
 
+        prev_fldr = fldr
+
     valid = shot > 0
     shot = shot[valid]
     delrt = delrt[valid]
@@ -182,53 +189,58 @@ if __name__ == "__main__":
     plt.plot(shot)
     plt.show()
 
-    dt = 4  # time step, milliseconds
+    DT = 4  # Time step, in milliseconds.
     for ii in range(data.shape[1]):
-        data[:, ii] = np.concatenate(
-            [np.zeros(int(delrt[ii] / dt)), data[:, ii]])[:NT]
+        pad_width = delrt[ii] // DT
+        padded_data = np.pad(
+            data[:, ii],
+            constant_values=0,
+            pad_width=(pad_width, 0),
+        )
+        data[:, ii] = padded_data[:NT]
 
-    # Open the hdf5 file in which to save the pre-processed data
+    # Open the hdf5 file in which to save the pre-processed data.
     savefile = h5.File("survey.hdf5", "w")
     savefile["data"] = data
 
     """Trace interpolation."""
-
     # From the observer log, we get the acquisition parameters:
-    ds = 50  # shot point spacing
-    dg1 = 100  # geophone spacing for channels 1-24
-    dg2 = 50  # geophone spacing for channels 25-48
-    vwater = 1533
-    ns = int(data.shape[1] / 48)
-    ng = 72
+    DS = 50  # Shot point spacing.
+    DG1 = 100  # Geophone spacing for channels 1-24.
+    DG2 = 50  # Geophone spacing for channels 25-48.
+    VWATER = 1533
+    NS = data.shape[1] // 48
+    NG = 72
     dg = 50
-    nearoff = 470  # varies for several shots, we take the most common value
+    NEAROFF = 470  # Varies for several shots. We take the most common value.
 
-    data_i = np.zeros([data.shape[0], ns * ng])
-    t0off = 2 * np.sqrt((nearoff / 2)**2 + 3000**2) / vwater
-    for ii in range(ns):
-        data_i[:, ng * ii:ng * ii + 23] = data[:, ii * 48:ii * 48 + 23]
-        data_roll = data[:, ii * 48 + 23:(ii + 1) * 48]
+    data_i = np.zeros([data.shape[0], NS*NG])
+    t0off = 2 * np.sqrt((NEAROFF/2)**2+3000**2) / VWATER
+    for ii in range(NS):
+        data_i[:, NG*ii:NG*ii+23] = data[:, ii*48:ii*48+23]
+        data_roll = data[:, ii*48+23:(ii+1)*48]
         n = data_roll.shape[1]
         for jj in range(n):
-            toff = 2 * np.sqrt(((nearoff + dg1 * (n - jj)) / 2)
-                               ** 2 + 3000 ** 2) / vwater - t0off
-            data_roll[:, jj] = np.roll(data_roll[:, jj], -int(toff / 0.004))
+            toff = 2*np.sqrt(((NEAROFF+DG1*(n-jj))/2)**2+3000**2)/VWATER - t0off
+            data_roll[:, jj] = np.roll(data_roll[:, jj], -toff//0.004)
         data_roll = ndimage.zoom(data_roll, [1, 2], order=1)
         n = data_roll.shape[1]
         for jj in range(n):
-            toff = 2 * np.sqrt(((nearoff + dg2 * (n - jj)) / 2) ** 2 + 3000 ** 2) / vwater - t0off
-            data_roll[:, jj] = np.roll(data_roll[:, jj], int(toff / 0.004))
-        data_i[:, ng * ii + 23:ng * (ii + 1)] = data_roll[:, :-1]
+            toff = 2*np.sqrt(((NEAROFF+DG2*(n-jj))/2)**2+3000**2)/VWATER - t0off
+            data_roll[:, jj] = np.roll(data_roll[:, jj], toff//0.004)
+        data_i[:, NG*ii+23:NG*(ii+1)] = data_roll[:, :-1]
 
     savefile['data_i'] = data_i
 
     """Resort accorging to CMP."""
-    ns = int(data_i.shape[1] / 72)
-    shots = np.arange(nearoff + ng * dg, nearoff + ng * dg + ns * ds, ds)
+    NS = data_i.shape[1] // 72
+    shots = np.arange(NEAROFF+NG*dg, NEAROFF+NG*dg+NS*DS, DS)
     recs = np.concatenate(
-        [np.arange(0, 0 + ng * dg, dg) + n * ds for n in range(ns)], axis=0)
-    shots = np.repeat(shots, ng)
-    cmps = ((shots + recs) / 2 / 50).astype(int) * 50
+        [np.arange(0, NG*dg, dg)+n*DS for n in range(NS)],
+        axis=0,
+    )
+    shots = np.repeat(shots, NG)
+    cmps = ((shots+recs)/2/50).astype(int) * 50
     offsets = shots - recs
 
     ind = np.lexsort((offsets, cmps))
@@ -252,25 +264,24 @@ if __name__ == "__main__":
 
     """Plots for quality control."""
     # Plot some CMP gather.
-    clip = 0.05
-    vmax = np.max(data_cmp[:, 0]) * clip
+    CLIP = 0.05
+    vmax = np.max(data_cmp[:, 0]) * CLIP
     vmin = -vmax
-    plt.imshow(data_cmp[:, :200],
-               interpolation='bilinear',
-               cmap=plt.get_cmap('Greys'),
-               vmin=vmin, vmax=vmax,
-               aspect='auto')
-
+    plt.imshow(
+        data_cmp[:, :200],
+        interpolation='bilinear',
+        cmap=plt.get_cmap('Greys'),
+        vmin=vmin, vmax=vmax,
+        aspect='auto',
+    )
     plt.show()
 
     # Constant offset plot.
-    clip = 0.05
-    vmax = np.max(data_cmp[:, 0]) * clip
-    vmin = -vmax
-    plt.imshow(data_cmp[:, ::72],
-               interpolation='bilinear',
-               cmap=plt.get_cmap('Greys'),
-               vmin=vmin, vmax=vmax,
-               aspect='auto')
-
+    plt.imshow(
+        data_cmp[:, ::72],
+        interpolation='bilinear',
+        cmap=plt.get_cmap('Greys'),
+        vmin=vmin, vmax=vmax,
+        aspect='auto',
+    )
     plt.show()
