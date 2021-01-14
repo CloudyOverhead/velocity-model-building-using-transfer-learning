@@ -33,6 +33,7 @@ https://cmgds.marine.usgs.gov/fan_info.php?fan=1978-015-FA
 from os import makedirs
 from os.path import join, isfile, isdir
 from urllib.request import urlretrieve
+from urllib.parse import urljoin
 
 import segyio
 from segyio import TraceField
@@ -54,59 +55,38 @@ NEAROFF = 470  # Varies for several shots. We take the most common value.
 
 def download_data(save_dir):
     """Download the data."""
-    PREFIX = "http://cotuit.er.usgs.gov/files/1978-015-FA"
-    FILES_PREFIX = "SE/001/18"
+    PREFIX = "http://cotuit.er.usgs.gov/files/1978-015-FA/"
 
     files = {
-        "32obslog.pdf": join(PREFIX, "NL/001/01/32-obslogs/32obslog.pdf"),
+        "32obslog.pdf": urljoin(PREFIX, "NL/001/01/32-obslogs/32obslog.pdf"),
         "report.pdf": "https://pubs.usgs.gov/of/1995/0027/report.pdf",
-        "CSDS32_1.SGY": join(PREFIX, "/SE/001/39/CSDS32_1.SGY"),
+        "CSDS32_1.SGY": urljoin(PREFIX, "SE/001/39/CSDS32_1.SGY"),
     }
-    dfiles = {
-        "U32A_01.SGY": join(PREFIX, FILES_PREFIX, "U32A_01.SGY"),
-        "U32A_02.SGY": join(PREFIX, FILES_PREFIX, "U32A_02.SGY"),
-        "U32A_03.SGY": join(PREFIX, FILES_PREFIX, "U32A_03.SGY"),
-        "U32A_04.SGY": join(PREFIX, FILES_PREFIX, "U32A_04.SGY"),
-        "U32A_05.SGY": join(PREFIX, FILES_PREFIX, "U32A_05.SGY"),
-        "U32A_06.SGY": join(PREFIX, FILES_PREFIX, "U32A_06.SGY"),
-        "U32A_07.SGY": join(PREFIX, FILES_PREFIX, "U32A_07.SGY"),
-        "U32A_08.SGY": join(PREFIX, FILES_PREFIX, "U32A_08.SGY"),
-        "U32A_09.SGY": join(PREFIX, FILES_PREFIX, "U32A_09.SGY"),
-    }
-    # "U32A_10.SGY": join(PREFIX, FILES_PREFIX, "U32A_10.SGY"),
-    # "U32A_11.SGY": join(PREFIX, FILES_PREFIX, "U32A_11.SGY"),
-    # "U32A_12.SGY": join(PREFIX, FILES_PREFIX, "U32A_12.SGY"),
-    # "U32A_13.SGY": join(PREFIX, FILES_PREFIX, "U32A_13.SGY"),
-    # "U32A_14.SGY": join(PREFIX, FILES_PREFIX, "U32A_14.SGY"),
-    # "U32A_15.SGY": join(PREFIX, FILES_PREFIX, "U32A_15.SGY"),
-    # "U32A_16.SGY": join(PREFIX, FILES_PREFIX, "U32A_16.SGY"),
-    # "U32A_17.SGY": join(PREFIX, FILES_PREFIX, "U32A_17.SGY"),
-    # "U32A_18.SGY": join(PREFIX, FILES_PREFIX, "U32A_18.SGY"),
-    # "U32A_19.SGY": join(PREFIX, FILES_PREFIX, "U32A_19.SGY"),
-    # "U32A_20.SGY": join(PREFIX, FILES_PREFIX, "U32A_20.SGY"),
-    # "U32A_21.SGY": join(PREFIX, FILES_PREFIX, "U32A_21.SGY")}
+    dfiles = [f"U32A_{i:02d}.SGY" for i in range(1, 10)]  # Up to 21.
 
-    fkeys = sorted(list(dfiles.keys()))
     if not isdir(save_dir):
         makedirs(save_dir)
 
     for file in files:
         if not isfile(join(save_dir, file)):
-            urlretrieve(files[file], join(save_dir, file))
+            save_path = join(save_dir, file)
+            urlretrieve(files[file], save_path)
 
-    for file in dfiles:
-        if not isfile(join(save_dir, file)):
-            urlretrieve(dfiles[file], join(save_dir, file))
+    for dfile in dfiles:
+        if not isfile(join(save_dir, dfile)):
+            save_path = join(save_dir, dfile)
+            dfile = urljoin(PREFIX, "SE/001/18/" + dfile)
+            urlretrieve(dfile, save_path)
 
-    return fkeys
+    return dfiles
 
 
-def segy_to_numpy(data_dir, fkeys):
+def segy_to_numpy(data_dir, dfiles):
     """Read the segy into numpy."""
     data = []
     fid = []
     cid = []
-    for file in fkeys:
+    for file in dfiles:
         print(file)
         file = join(data_dir, file)
         with segyio.open(file, "r", ignore_geometry=True) as segy:
@@ -298,8 +278,8 @@ if __name__ == "__main__":
     SAVE_DIR = "./data/USGS_line32"
     PREPROCESSED_DATA_PATH = join(SAVE_DIR, "survey.hdf5")
 
-    fkeys = download_data(SAVE_DIR)
-    data, fid, cid = segy_to_numpy(SAVE_DIR, fkeys)
+    dfiles = download_data(SAVE_DIR)
+    data, fid, cid = segy_to_numpy(SAVE_DIR, dfiles)
     data, fid, cid = preprocess(data, fid, cid, PREPROCESSED_DATA_PATH)
     data_interpolated = interpolate_traces(PREPROCESSED_DATA_PATH)
     data_cmp = sort_cmp(data_interpolated, PREPROCESSED_DATA_PATH)
