@@ -30,7 +30,7 @@ The processed real data is available publicly at
 https://cmgds.marine.usgs.gov/fan_info.php?fan=1978-015-FA
 """
 
-from os import mkdir
+from os import makedirs
 from os.path import join, isfile, isdir
 from urllib.request import urlretrieve
 
@@ -88,7 +88,7 @@ def download_data(save_dir):
 
     fkeys = sorted(list(dfiles.keys()))
     if not isdir(save_dir):
-        mkdir(save_dir)
+        makedirs(save_dir)
 
     for file in files:
         if not isfile(join(save_dir, file)):
@@ -296,7 +296,7 @@ def plot(data, clip=.05):
 
 
 if __name__ == "__main__":
-    SAVE_DIR = "./USGS_line32"
+    SAVE_DIR = "./data/USGS_line32"
     PREPROCESSED_DATA_PATH = join(SAVE_DIR, "survey.hdf5")
 
     fkeys = download_data(SAVE_DIR)
