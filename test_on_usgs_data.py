@@ -35,7 +35,7 @@ from os.path import join, isfile, isdir
 from urllib.request import urlretrieve
 
 import segyio
-from segyio.TraceField import FieldRecord, TraceNumber
+from segyio import TraceField
 import h5py as h5
 import numpy as np
 import matplotlib.pyplot as plt
@@ -116,8 +116,8 @@ def segy_to_numpy(data_dir, fkeys):
             file_cid = []
             for trid in range(segy.tracecount):
                 file_data.append(segy.trace[trid])
-                file_fid.append(segy.header[trid][FieldRecord])
-                file_cid.append(segy.header[trid][TraceNumber])
+                file_fid.append(segy.header[trid][TraceField.FieldRecord])
+                file_cid.append(segy.header[trid][TraceField.TraceNumber])
             file_data = file_data.T
             file_data = file_data[:NT]
             data.append(file_data)
