@@ -87,7 +87,6 @@ def segy_to_numpy(data_dir, dfiles):
     fid = []
     cid = []
     for file in dfiles:
-        print(file)
         file = join(data_dir, file)
         with segyio.open(file, "r", ignore_geometry=True) as segy:
             file_data = []
@@ -97,12 +96,12 @@ def segy_to_numpy(data_dir, dfiles):
                 file_data.append(segy.trace[trid])
                 file_fid.append(segy.header[trid][TraceField.FieldRecord])
                 file_cid.append(segy.header[trid][TraceField.TraceNumber])
-            file_data = file_data.T
+            file_data = np.array(file_data).T
             file_data = file_data[:NT]
             data.append(file_data)
             fid.append(file_fid)
             cid.append(file_cid)
-    return np.array(data), np.array(fid), np.array(cid)
+    return data, fid, cid
 
 
 def preprocess(data, fid, cid, save_path):
@@ -180,9 +179,6 @@ def preprocess(data, fid, cid, save_path):
     delrt = delrt[valid]
     data = data[:, valid]
 
-    plt.plot(shot)
-    plt.show()
-
     DT = 4  # Time step, in milliseconds.
     for ii in range(data.shape[1]):
         pad_width = int(delrt[ii] / DT)
@@ -220,7 +216,7 @@ def interpolate_traces(save_path):
         data_i[:, NG*ii+23:NG*(ii+1)] = data_roll[:, :-1]
 
     with h5.File(save_path, "w") as savefile:
-        savefile['data_i'] = data_i
+        savefile['shotgather'] = data_i
 
     return data_i
 
