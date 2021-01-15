@@ -185,7 +185,7 @@ def preprocess(data, fid, cid, save_path):
 
     DT = 4  # Time step, in milliseconds.
     for ii in range(data.shape[1]):
-        pad_width = delrt[ii] // DT
+        pad_width = int(delrt[ii] / DT)
         padded_data = np.pad(
             data[:, ii],
             constant_values=0,
@@ -211,12 +211,12 @@ def interpolate_traces(save_path):
         n = data_roll.shape[1]
         for jj in range(n):
             toff = 2*np.sqrt(((NEAROFF+DG1*(n-jj))/2)**2+3000**2)/VWATER - t0off
-            data_roll[:, jj] = np.roll(data_roll[:, jj], -toff//0.004)
+            data_roll[:, jj] = np.roll(data_roll[:, jj], -int(toff/0.004))
         data_roll = ndimage.zoom(data_roll, [1, 2], order=1)
         n = data_roll.shape[1]
         for jj in range(n):
             toff = 2*np.sqrt(((NEAROFF+DG2*(n-jj))/2)**2+3000**2)/VWATER - t0off
-            data_roll[:, jj] = np.roll(data_roll[:, jj], toff//0.004)
+            data_roll[:, jj] = np.roll(data_roll[:, jj], int(toff/0.004))
         data_i[:, NG*ii+23:NG*(ii+1)] = data_roll[:, :-1]
 
     with h5.File(save_path, "w") as savefile:
