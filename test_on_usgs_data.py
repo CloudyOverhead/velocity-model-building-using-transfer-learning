@@ -237,8 +237,8 @@ def plot(data, clip=.05):
 
 
 if __name__ == "__main__":
-    SAVE_DIR = "./data/USGS_line32"
-    PREPROCESSED_DATA_PATH = join(SAVE_DIR, "survey.hdf5")
+    SAVE_DIR = "./Datasets/USGS/test"
+    PREPROCESSED_DATA_PATH = join(SAVE_DIR, "example_0")
 
     dfiles = download_data(SAVE_DIR)
     data, fid, cid = segy_to_numpy(SAVE_DIR, dfiles)
