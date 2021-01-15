@@ -225,40 +225,6 @@ def interpolate_traces(save_path):
     return data_i
 
 
-def sort_cmp(data_interpolated, save_path):
-    """Resort accorging to CMP."""
-    ns = data_interpolated.shape[1] // 72
-    shots = np.arange(NEAROFF+NG*DG, NEAROFF+NG*DG+ns*DS, DS)
-    recs = np.concatenate(
-        [np.arange(0, NG*DG, DG)+n*DS for n in range(ns)],
-        axis=0,
-    )
-    shots = np.repeat(shots, NG)
-    cmps = ((shots+recs)/2) // 50 * 50
-    offsets = shots - recs
-
-    ind = np.lexsort((offsets, cmps))
-    cmps = cmps[ind]
-    unique_cmps, counts = np.unique(cmps, return_counts=True)
-    firstcmp = unique_cmps[np.argmax(counts == 72)]
-    lastcmp = unique_cmps[-np.argmax(counts[::-1] == 72) - 1]
-    ind1 = np.argmax(cmps == firstcmp)
-    ind2 = np.argmax(cmps > lastcmp)
-    ntraces = cmps[ind1:ind2].shape[0]
-    data_cmp = np.zeros([data_interpolated.shape[0], ntraces])
-
-    n = 0
-    for ii, jj in enumerate(ind):
-        if ii >= ind1 and ii < ind2:
-            data_cmp[:, n] = data_interpolated[:, jj]
-            n += 1
-
-    with h5.File(save_path, "w") as savefile:
-        savefile['data_cmp'] = data_cmp
-
-    return data_cmp
-
-
 def plot(data, clip=.05):
     """Plot for quality control."""
     vmax = np.amax(data[:, 0]) * clip
@@ -282,9 +248,8 @@ if __name__ == "__main__":
     data, fid, cid = segy_to_numpy(SAVE_DIR, dfiles)
     data, fid, cid = preprocess(data, fid, cid, PREPROCESSED_DATA_PATH)
     data_interpolated = interpolate_traces(PREPROCESSED_DATA_PATH)
-    data_cmp = sort_cmp(data_interpolated, PREPROCESSED_DATA_PATH)
 
-    # Plot some CMP gather.
-    plot(data_cmp[:, :200])
+    # Plot some shot gathers.
+    plot(data_interpolated[:, :200])
     # Constant offset plot.
-    plot(data_cmp[:, ::72])
+    plot(data_interpolated[:, ::72])
