@@ -4,6 +4,7 @@ __pycache__
 logs*
 *.png
 Datasets
+data
 workdir*
 out*
 *.out
