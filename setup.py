@@ -23,6 +23,7 @@ REQUIREMENTS = [
         name="Deep_2D_velocity",
         version="57b425ae46fc1343fab06cb03fe0e11175922bf1",
     ),
+    "scikit-image",
 ]
 
 setup(
@@ -36,6 +37,7 @@ setup(
     url="https://github.com/CloudyOverhead/deep-learning-velocity-estimation",
     packages=find_packages(),
     install_requires=REQUIREMENTS,
+    setup_requires=['setuptools-git'],
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",

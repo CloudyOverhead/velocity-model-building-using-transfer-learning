@@ -41,10 +41,7 @@ if __name__ == "__main__":
         "--dataset",
         type=str,
         default="Dataset1Dsmall",
-        help=(
-            "Name of dataset from `datasets."
-            "datasets` to use."
-        ),
+        help="Name of dataset from `datasets.datasets` to use.",
     )
     parser.add_argument(
         "--logdir",
@@ -83,8 +80,17 @@ if __name__ == "__main__":
         help="Run the Keras model eagerly, for debugging.",
     )
 
-    args = parser.parse_args()
+    args, unknown_args = parser.parse_known_args()
     args.nn = getattr(architecture, args.nn)
     args.dataset = getattr(datasets, args.dataset)()
     args.params = getattr(architecture, args.params)()
+    for arg, value in zip(unknown_args[::2], unknown_args[1::2]):
+        arg = arg.strip('-')
+        if arg in args.params.__dict__.keys():
+            setattr(args.params, arg, value)
+        else:
+            raise ValueError(
+                f"Argument `{arg}` not recognized. Could not match it to an "
+                f"existing hyerparameter."
+            )
     main(args)
