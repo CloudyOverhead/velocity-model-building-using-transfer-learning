@@ -15,6 +15,7 @@ main_spec = spec_from_file_location("main", main_path)
 main_module = module_from_spec(main_spec)
 main_spec.loader.exec_module(main_module)
 main = main_module.main
+int_or_list = main_module.int_or_list
 
 
 if __name__ == "__main__":
@@ -59,10 +60,25 @@ if __name__ == "__main__":
         ),
     )
     parser.add_argument(
-        "--ngpu",
-        type=int,
-        default=2,
-        help="Quantity of GPUs for data creation.",
+        "--gpus",
+        type=int_or_list,
+        default=None,
+        help=(
+            "Either the quantity of GPUs or a list of GPU IDs to use in data "
+            "creation, training and inference. Use a string representation "
+            "for lists of GPU IDs, e.g. `'[0, 1]'` or `[0,1]`. By default, "
+            "use all available GPUs."
+        ),
+    )
+    parser.add_argument(
+        "--savedir",
+        type=str,
+        default=None,
+        help=(
+            "The name of the subdirectory within the dataset test directory "
+            "to save predictions in. Defaults to the name of the network "
+            "class."
+        ),
     )
     parser.add_argument(
         "--plot",
@@ -83,7 +99,8 @@ if __name__ == "__main__":
     args, unknown_args = parser.parse_known_args()
     args.nn = getattr(architecture, args.nn)
     args.dataset = getattr(datasets, args.dataset)()
-    args.params = getattr(architecture, args.params)()
+    is_training = args.training in [1, 2]
+    args.params = getattr(architecture, args.params)(is_training=is_training)
     for arg, value in zip(unknown_args[::2], unknown_args[1::2]):
         arg = arg.strip('-')
         if arg in args.params.__dict__.keys():

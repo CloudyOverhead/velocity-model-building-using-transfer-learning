@@ -104,7 +104,7 @@ def segy_to_numpy(data_dir, dfiles):
     return data, fid, cid
 
 
-def preprocess(data, fid, cid, save_path):
+def preprocess(data, fid, cid):
     """Remove or fix bad shots."""
     # Correct `fid`.
     if len(fid) > 16:
@@ -189,34 +189,28 @@ def preprocess(data, fid, cid, save_path):
         )
         data[:, ii] = padded_data[:NT]
 
-    with h5.File(save_path, "w") as savefile:
-        savefile["data"] = data
-
     return data, fid, cid
 
 
-def interpolate_traces(save_path):
+def interpolate_traces(data):
     """Interpolate traces."""
     ns = data.shape[1] // 48
 
     data_i = np.zeros([data.shape[0], ns*NG])
     t0off = 2 * np.sqrt((NEAROFF/2)**2+3000**2) / VWATER
-    for ii in range(ns):
-        data_i[:, NG*ii:NG*ii+23] = data[:, ii*48:ii*48+23]
-        data_roll = data[:, ii*48+23:(ii+1)*48]
+    for i in range(ns):
+        data_i[:, NG*i:NG*i+23] = data[:, i*48:i*48+23]
+        data_roll = data[:, i*48+23:(i+1)*48]
         n = data_roll.shape[1]
-        for jj in range(n):
-            toff = 2*np.sqrt(((NEAROFF+DG1*(n-jj))/2)**2+3000**2)/VWATER - t0off
-            data_roll[:, jj] = np.roll(data_roll[:, jj], -int(toff/0.004))
+        for j in range(n):
+            toff = 2*np.sqrt(((NEAROFF+DG1*(n-j))/2)**2+3000**2)/VWATER - t0off
+            data_roll[:, j] = np.roll(data_roll[:, j], -int(toff/0.004))
         data_roll = ndimage.zoom(data_roll, [1, 2], order=1)
         n = data_roll.shape[1]
-        for jj in range(n):
-            toff = 2*np.sqrt(((NEAROFF+DG2*(n-jj))/2)**2+3000**2)/VWATER - t0off
-            data_roll[:, jj] = np.roll(data_roll[:, jj], int(toff/0.004))
-        data_i[:, NG*ii+23:NG*(ii+1)] = data_roll[:, :-1]
-
-    with h5.File(save_path, "w") as savefile:
-        savefile['shotgather'] = data_i
+        for j in range(n):
+            toff = 2*np.sqrt(((NEAROFF+DG2*(n-j))/2)**2+3000**2)/VWATER - t0off
+            data_roll[:, j] = np.roll(data_roll[:, j], int(toff/0.004))
+        data_i[:, NG*i+23:NG*(i+1)] = data_roll[:, :-1]
 
     return data_i
 
@@ -237,13 +231,17 @@ def plot(data, clip=.05):
 
 
 if __name__ == "__main__":
-    SAVE_DIR = "./Datasets/USGS/test"
-    PREPROCESSED_DATA_PATH = join(SAVE_DIR, "example_0")
+    SAVE_DIR = "./Datasets/USGS"
 
     dfiles = download_data(SAVE_DIR)
     data, fid, cid = segy_to_numpy(SAVE_DIR, dfiles)
-    data, fid, cid = preprocess(data, fid, cid, PREPROCESSED_DATA_PATH)
-    data_interpolated = interpolate_traces(PREPROCESSED_DATA_PATH)
+    data, fid, cid = preprocess(data, fid, cid)
+    data_interpolated = interpolate_traces(data)
+    for i, dir in enumerate(["train", "test"]):
+        save_path = join(SAVE_DIR, dir, f"example_{i}")
+        with h5.File(save_path, "w") as save_file:
+            save_file['sourcedata'] = data
+            save_file['shotgather'] = data_interpolated
 
     # Plot some shot gathers.
     plot(data_interpolated[:, :200])
