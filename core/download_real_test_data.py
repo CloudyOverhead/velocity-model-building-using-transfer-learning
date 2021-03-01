@@ -32,7 +32,7 @@ The processed real data is available publicly at
 https://cmgds.marine.usgs.gov/fan_info.php?fan=1978-015-FA
 """
 
-from os import makedirs
+from os import makedirs, pardir
 from os.path import join, isfile, isdir
 from urllib.request import urlretrieve
 from urllib.parse import urljoin
@@ -233,7 +233,7 @@ def plot(data, clip=.05):
 
 
 if __name__ == "__main__":
-    SAVE_DIR = "./Datasets/USGS"
+    SAVE_DIR = join(pardir, "datasets", "USGS")
 
     dfiles = download_data(SAVE_DIR)
     data, fid, cid = segy_to_numpy(SAVE_DIR, dfiles)

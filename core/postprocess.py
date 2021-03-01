@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from argparse import ArgumentParser, Namespace
-from os import makedirs, listdir
+from os import makedirs, listdir, pardir
 from os.path import join, exists
 
 import numpy as np
@@ -16,7 +16,7 @@ from main import main as global_main, int_or_list
 from core.architecture import RCNN2D, Hyperparameters1D, Hyperparameters2D
 from deep_learning_velocity_estimation.datasets import Article2D
 
-FIGURES_DIR = "figures"
+FIGURES_DIR = join(pardir, "figures")
 TOINPUTS = ['shotgather']
 TOOUTPUTS = ['ref', 'vrms', 'vint']
 
