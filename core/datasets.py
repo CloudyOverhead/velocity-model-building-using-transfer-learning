@@ -1,13 +1,19 @@
 # -*- coding: utf-8 -*-
 """Define parameters for different datasets."""
 
+from os.path import abspath
+
 from GeoFlow.GeoDataset import GeoDataset
 from GeoFlow.EarthModel import MarineModel
 from GeoFlow.SeismicGenerator import Acquisition
 from GeoFlow.GraphIO import Reftime, Vrms, Vint, Vdepth, ShotGather
 
 
-class Article1D(GeoDataset):
+class Dataset(GeoDataset):
+    basepath = abspath("datasets")
+
+
+class Article1D(Dataset):
     name = "Article1D"
 
     def set_dataset(self):
@@ -116,15 +122,4 @@ class USGS(Article2D):
             inputs[name].mute_dir = False
         outputs = {}
 
-        return model, acquire, inputs, outputs
-
-
-class Mercier(GeoDataset):
-    name = "Mercier"
-
-    def set_case(self):
-        model, acquire, inputs, outputs = super().__init__()
-        self.trainsize = 41
-        self.validatesize = 0
-        self.testsize = 10
         return model, acquire, inputs, outputs

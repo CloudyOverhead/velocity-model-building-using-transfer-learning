@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 """
+Download line 32 of USGS marine survey 1978-015-FA.
+
 This file is modified from `gfabieno/Deep_1D_velocity/realdata
 /Process_realdata.py`](https://github.com/GeoCode-polymtl/Deep_1D_velocity/blob
 /master/realdata/Process_realdata.py) which is licensed under the MIT license:

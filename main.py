@@ -19,13 +19,10 @@ int_or_list = main_module.int_or_list
 
 
 if __name__ == "__main__":
-    from deep_learning_velocity_estimation import architecture
-    from deep_learning_velocity_estimation import datasets
+    from core import architecture
+    from core import datasets
 
-    # Initialize argument parser.
     parser = ArgumentParser()
-
-    # Add arguments to parse for training.
     parser.add_argument(
         "--nn",
         type=str,

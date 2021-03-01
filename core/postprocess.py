@@ -13,9 +13,7 @@ from tensorflow.compat.v1.train import summary_iterator
 from GeoFlow.SeismicUtilities import sortcmp
 
 from main import main as global_main, int_or_list
-from deep_learning_velocity_estimation.architecture import (
-    RCNN2D, Hyperparameters1D, Hyperparameters2D,
-)
+from core.architecture import RCNN2D, Hyperparameters1D, Hyperparameters2D
 from deep_learning_velocity_estimation.datasets import Article2D
 
 FIGURES_DIR = "figures"

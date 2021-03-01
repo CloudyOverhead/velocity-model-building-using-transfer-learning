@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from setuptools import setup, find_packages
 
 
@@ -27,11 +29,13 @@ REQUIREMENTS = [
 ]
 
 setup(
-    name="deep-learning-seismic-velocity-estimation",
+    name="velocity-model-building-using-transfer-learning",
     version="0.0.1",
     author="Jérome Simon",
     author_email="jerome.simon@ete.inrs.ca",
-    description="Estimating 2D seismic velocity models using deep learning",
+    description=(
+        "Estimating 2D seismic velocity models by leveraging transfer learning"
+    ),
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/CloudyOverhead/deep-learning-velocity-estimation",

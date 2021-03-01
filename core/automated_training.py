@@ -5,8 +5,8 @@ from argparse import ArgumentParser
 
 from AutomatedTraining.AutomatedTraining import optimize
 
-from deep_learning_velocity_estimation import datasets, architecture
-from deep_learning_velocity_estimation.architecture import RCNN2D
+from core import datasets, architecture
+from core.architecture import RCNN2D
 
 
 parser = ArgumentParser()
