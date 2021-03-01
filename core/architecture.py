@@ -52,7 +52,9 @@ class Hyperparameters2D(Hyperparameters1D):
 
         if is_training:
             CHECKPOINT_1D = (
-                "logs/test-on-usgs/4d92542_Reintroduce_deformations_in_dataset"
+                "/home/CloudyOverhead/jacques/Drive/Drive/GitHub"
+                "/velocity-model-building-using-transfer-learning/logs"
+                "/test-on-usgs/4d92542_Reintroduce_deformations_in_dataset"
                 "/0/model/lambda_2021-02-11_16-38-47"
                 "/lambda_85f1b_00000_0_2021-02-11_16-38-47/checkpoint_150"
             )
