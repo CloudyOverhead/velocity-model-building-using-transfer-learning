@@ -36,7 +36,6 @@ class Article1D(Dataset):
         model.vp_max = 4000.0
 
         acquire = Acquisition(model=model)
-        acquire.fs = True
         acquire.dt = .0004
         acquire.NT = int(8 / acquire.dt)
         acquire.resampling = 10
