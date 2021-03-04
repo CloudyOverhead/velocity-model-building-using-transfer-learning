@@ -3,7 +3,7 @@
 
 from argparse import ArgumentParser
 
-from AutomatedTraining.AutomatedTraining import optimize
+from AutomatedTraining.AutomatedTraining import optimize, int_or_list
 
 from core import datasets, architecture
 from core.architecture import RCNN2D
@@ -21,6 +21,17 @@ parser.add_argument(
     type=str,
     default="Dataset1Dsmall",
     help="Name of dataset from `DefinedDataset` to use.",
+)
+parser.add_argument(
+    "--gpus",
+    type=int_or_list,
+    default=None,
+    help=(
+        "Either the quantity of GPUs or a list of GPU IDs to use in data "
+        "creation, training and inference. Use a string representation "
+        "for lists of GPU IDs, e.g. `'[0, 1]'` or `[0,1]`. By default, "
+        "use all available GPUs."
+    ),
 )
 parser.add_argument(
     "--debug",
@@ -48,7 +59,7 @@ optimize(
     nn=RCNN2D,
     params=args.params,
     dataset=args.dataset,
-    gpus=None,
+    gpus=args.gpus,
     debug=args.debug,
     eager=args.eager,
     **config,
