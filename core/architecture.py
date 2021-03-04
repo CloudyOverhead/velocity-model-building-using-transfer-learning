@@ -45,7 +45,7 @@ class Hyperparameters2D(Hyperparameters1D):
             [1, 9, 9],
         ]
         self.encoder_filters = [16, 16, 32, 32]
-        self.rcnn_kernel = [15, 3, 5]
+        self.rcnn_kernel = [15, 3, 3]
         self.rcnn_filters = 32
         self.decode_ref_kernel = [1, 1]
         self.decode_kernel = [1, 1]
