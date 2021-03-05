@@ -12,7 +12,7 @@ class Hyperparameters1D(Hyperparameters):
     def __init__(self, is_training=True):
         super().__init__()
 
-        self.epochs = 50
+        self.epochs = 40
         self.steps_per_epoch = 100
         self.batch_size = 24
 
@@ -22,8 +22,10 @@ class Hyperparameters1D(Hyperparameters):
             self.loss_scales = (
                 {'ref': .8, 'vrms': .2, 'vint': .0, 'vdepth': .0},
                 {'ref': .1, 'vrms': .7, 'vint': .2, 'vdepth': .0},
-                {'ref': .1, 'vrms': .1, 'vint': .8, 'vdepth': .0},
+                {'ref': .1, 'vrms': .1, 'vint': .7, 'vdepth': .1},
+                {'ref': .1, 'vrms': .1, 'vint': .4, 'vdepth': .4},
             )
+            self.seed = (0, 1, 2, 3)
 
 
 class Hyperparameters2D(Hyperparameters1D):
@@ -50,4 +52,4 @@ class Hyperparameters2D(Hyperparameters1D):
                 "/0/model/lambda_2021-02-11_16-38-47"
                 "/lambda_85f1b_00000_0_2021-02-11_16-38-47/checkpoint_150"
             )
-            self.restore_from = (CHECKPOINT_1D, None, None)
+            self.restore_from = (CHECKPOINT_1D, None, None, None)
