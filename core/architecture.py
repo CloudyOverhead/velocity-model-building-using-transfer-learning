@@ -30,13 +30,9 @@ class Hyperparameters2D(Hyperparameters1D):
     def __init__(self, is_training=True):
         super().__init__(is_training=is_training)
 
-        self.epochs = 50
-        self.steps_per_epoch = 100
         self.batch_size = 2
 
         self.learning_rate = 8E-5
-
-        self.freeze_to = None
 
         self.encoder_kernels = [
             [15, 1, 1],
@@ -44,11 +40,7 @@ class Hyperparameters2D(Hyperparameters1D):
             [15, 1, 1],
             [1, 9, 9],
         ]
-        self.encoder_filters = [16, 16, 32, 32]
         self.rcnn_kernel = [15, 3, 3]
-        self.rcnn_filters = 32
-        self.decode_ref_kernel = [1, 1]
-        self.decode_kernel = [1, 1]
 
         if is_training:
             CHECKPOINT_1D = (
@@ -59,8 +51,3 @@ class Hyperparameters2D(Hyperparameters1D):
                 "/lambda_85f1b_00000_0_2021-02-11_16-38-47/checkpoint_150"
             )
             self.restore_from = (CHECKPOINT_1D, None, None)
-            self.loss_scales = (
-                {'ref': .8, 'vrms': .2, 'vint': .0, 'vdepth': .0},
-                {'ref': .1, 'vrms': .7, 'vint': .2, 'vdepth': .0},
-                {'ref': .1, 'vrms': .1, 'vint': .8, 'vdepth': .0},
-            )
