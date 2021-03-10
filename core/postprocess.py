@@ -10,11 +10,12 @@ from matplotlib import pyplot as plt
 from matplotlib.patches import Rectangle
 from skimage.metrics import structural_similarity as ssim
 from tensorflow.compat.v1.train import summary_iterator
-from GeoFlow.SeismicUtilities import sortcmp
+from GeoFlow.SeismicUtilities import sortcmp, stack
+import segyio
 
 from main import main as global_main, int_or_list
 from core.architecture import RCNN2D, Hyperparameters1D, Hyperparameters2D
-from deep_learning_velocity_estimation.datasets import Article2D
+from deep_learning_velocity_estimation.datasets import Article2D, USGS
 
 FIGURES_DIR = join(pardir, "figures")
 TOINPUTS = ['shotgather']
@@ -28,12 +29,15 @@ plt.rcParams.update(
 def main(args):
     dataset = Article2D()
     dataset._getfilelist()
+    dataset_real = USGS()
+    dataset_real._getfilelist()
 
     if not exists(FIGURES_DIR):
         makedirs(FIGURES_DIR)
 
     if not args.no_inference:
         launch_inference(args, dataset)
+        launch_inference(args, dataset_real)
 
     inputs, labels, weights, preds, similarities = compare_preds(dataset)
 
@@ -59,6 +63,11 @@ def main(args):
         params_1d=Hyperparameters1D(is_training=True),
         logdir_2d=args.logdir_2d,
         params_2d=Hyperparameters2D(is_training=True),
+        plot=args.plot,
+    )
+    plot_real_data(
+        args,
+        dataset=dataset_real,
         plot=args.plot,
     )
 
@@ -420,6 +429,53 @@ def plot_losses(logdir_1d, params_1d, logdir_2d, params_2d, plot=True):
         plt.show()
     else:
         plt.clf()
+
+
+def plot_real_data(args, dataset, plot=True):
+    inputs, _, _ = dataset.generator.read("example_1")
+    shotgather = inputs['shotgather']
+    src_pos, rec_pos = dataset.acquire.set_rec_src()
+    datacmp, cmps = sortcmp(shotgather, src_pos, rec_pos)
+    pretrained = dataset.generator.read_predictions("example_1", "Pretraining")
+    pretrained = {name: pretrained[name] for name in TOOUTPUTS}
+    preds = dataset.generator.read_predictions("example_1", "PostTraining")
+    preds = {name: preds[name] for name in TOOUTPUTS}
+
+    stacked_filepath = join(dataset.datatest, "CSDS32_1.SGY")
+    with segyio.open(stacked_filepath, "r", ignore_geometry=True) as segy:
+        stacked_usgs = [segy.trace[trid] for trid in range(segy.tracecount)]
+        stacked_usgs = np.array(stacked_usgs)
+        stacked_usgs = stacked_usgs.T
+    stacked_usgs = stacked_usgs[:, -2401:-160]
+    stacked_usgs = stacked_usgs[:, ::-1]
+
+    times = np.arange(dataset.model.NT) * dataset.model.dt
+    offsets = np.arange(dataset.acquire.gmin, dataset.acquire.gmax)
+    offsets *= dataset.acquire.dh
+    fig, axs = plt.subplot(
+        nrows=5, figsize=[6.66, 6], constrained_layout=False, sharex=True,
+        sharey=True,
+    )
+    axs[0].imshow(pretrained['vint'])
+    axs[1].imshow(stack_2d(datacmp, times, offsets, pretrained['vrms']))
+    axs[2].imshow(preds['vint'])
+    axs[3].imshow(stack_2d(datacmp, times, offsets, preds['vrms']))
+    axs[4].imshow(stacked_usgs)
+
+    plt.savefig(join(FIGURES_DIR, "results_real.pdf"), bbox_inches="tight")
+    if plot:
+        plt.gcf().set_dpi(200)
+        plt.show()
+    else:
+        plt.clf()
+
+
+def stack_2d(cmps, times, offsets, velocities):
+    stacked = []
+    for cmp, velocities_1d in zip(cmps.T, velocities.T):
+        stacked.append(stack(cmp, times, offsets, velocities_1d))
+    stacked = np.array(stacked).T
+    return stacked
 
 
 if __name__ == "__main__":
