@@ -51,6 +51,7 @@ def main(args):
             args,
             dataset=dataset,
             filename=dataset.files["test"][idx],
+            figure_name=f"results_{percentile}th_percentile.pdf",
             plot=args.plot,
         )
         if percentile == 50:
@@ -131,7 +132,7 @@ def compare_preds(dataset):
     return all_inputs, all_labels, all_weights, all_preds, similarities
 
 
-def plot_example(args, dataset, filename, plot=True):
+def plot_example(args, dataset, filename, figure_name, plot=True):
     inputs, labels, weights, filename = dataset.get_example(
         filename=filename,
         phase='test',
@@ -333,9 +334,7 @@ def plot_example(args, dataset, filename, plot=True):
         height = y1 - y0
         plt.text(x0, y0-.02*height, letter, va='bottom')
 
-    plt.savefig(
-        join(FIGURES_DIR, "results_synthetic.pdf"), bbox_inches="tight",
-    )
+    plt.savefig(join(FIGURES_DIR, figure_name), bbox_inches="tight")
     if plot:
         plt.gcf().set_dpi(200)
         plt.show()
