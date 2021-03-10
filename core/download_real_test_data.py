@@ -211,6 +211,16 @@ def interpolate_traces(data):
     return data_i
 
 
+def sort_receivers(data):
+    """Have closest receivers first."""
+    NS = data.shape[-1] // NG
+    print("NS is", NS)
+    data = data.reshape([NT, NG, NS])
+    data = data[:, ::-1]
+    data = data.reshape([NS, -1])
+    return data
+
+
 def plot(data, clip=.05):
     """Plot for quality control."""
     vmax = np.amax(data[:, 0]) * clip
@@ -233,6 +243,7 @@ if __name__ == "__main__":
     data, fid, cid = segy_to_numpy(SAVE_DIR, dfiles)
     data, fid, cid = preprocess(data, fid, cid)
     data_interpolated = interpolate_traces(data)
+    data_interpolated = sort_receivers(data_interpolated)
     for i, dir in enumerate(["train", "test"]):
         save_path = join(SAVE_DIR, dir, f"example_{i}")
         with h5.File(save_path, "w") as save_file:
