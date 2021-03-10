@@ -64,7 +64,7 @@ def download_data(save_dir):
         "report.pdf": "https://pubs.usgs.gov/of/1995/0027/report.pdf",
         "CSDS32_1.SGY": urljoin(PREFIX, "SE/001/39/CSDS32_1.SGY"),
     }
-    dfiles = [f"U32A_{i:02d}.SGY" for i in range(1, 22)]  # Up to 21.
+    dfiles = [f"U32A_{i:02d}.SGY" for i in range(1, 22)]
 
     if not isdir(save_dir):
         makedirs(save_dir)
@@ -237,7 +237,7 @@ def plot(data, clip=.05):
 
 
 if __name__ == "__main__":
-    SAVE_DIR = join(pardir, "datasets", "USGS")
+    SAVE_DIR = join("datasets", "USGS")
 
     dfiles = download_data(SAVE_DIR)
     data, fid, cid = segy_to_numpy(SAVE_DIR, dfiles)
