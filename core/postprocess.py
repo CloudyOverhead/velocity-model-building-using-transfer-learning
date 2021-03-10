@@ -82,6 +82,46 @@ def launch_inference(args, dataset):
         global_main(args)
 
 
+def compare_preds(dataset):
+    all_inputs = {}
+    all_labels = {}
+    all_weights = {}
+    all_preds = {}
+    for example in dataset.files["test"]:
+        inputs, labels, weights, filename = dataset.get_example(
+            example,
+            phase='test',
+            toinputs=RCNN2D.toinputs,
+            tooutputs=RCNN2D.tooutputs,
+        )
+        preds = dataset.generator.read_predictions(filename, "PostTraining")
+        target_dicts = [all_inputs, all_labels, all_weights, all_preds]
+        current_dicts = [inputs, labels, weights, preds]
+        for target_dict, current_dict in zip(target_dicts, current_dicts):
+            for key in current_dict.keys():
+                current_array = np.expand_dims(current_dict[key], axis=0)
+                if key in target_dict.keys():
+                    target_dict[key] = np.append(
+                        target_dict[key], current_array, axis=0,
+                    )
+                else:
+                    target_dict[key] = current_array
+
+    similarities = np.array([])
+    for labels, weights, preds in zip(
+        all_labels["vint"], all_weights["vint"], all_preds["vint"],
+    ):
+        temp_labels = labels * weights
+        temp_preds = preds * weights
+        similarity = ssim(temp_labels, temp_preds)
+        similarities = np.append(similarities, similarity)
+
+    print("Average SSIM:", np.mean(similarities))
+    print("Standard deviation on SSIM:", np.std(similarities))
+
+    return all_inputs, all_labels, all_weights, all_preds, similarities
+
+
 def plot_example(args, dataset, filename, plot=True):
     inputs, labels, weights, filename = dataset.get_example(
         filename=filename,
@@ -292,46 +332,6 @@ def plot_example(args, dataset, filename, plot=True):
         plt.show()
     else:
         plt.clf()
-
-
-def compare_preds(dataset):
-    all_inputs = {}
-    all_labels = {}
-    all_weights = {}
-    all_preds = {}
-    for example in dataset.files["test"]:
-        inputs, labels, weights, filename = dataset.get_example(
-            example,
-            phase='test',
-            toinputs=RCNN2D.toinputs,
-            tooutputs=RCNN2D.tooutputs,
-        )
-        preds = dataset.generator.read_predictions(filename, "PostTraining")
-        target_dicts = [all_inputs, all_labels, all_weights, all_preds]
-        current_dicts = [inputs, labels, weights, preds]
-        for target_dict, current_dict in zip(target_dicts, current_dicts):
-            for key in current_dict.keys():
-                current_array = np.expand_dims(current_dict[key], axis=0)
-                if key in target_dict.keys():
-                    target_dict[key] = np.append(
-                        target_dict[key], current_array, axis=0,
-                    )
-                else:
-                    target_dict[key] = current_array
-
-    similarities = np.array([])
-    for labels, weights, preds in zip(
-        all_labels["vint"], all_weights["vint"], all_preds["vint"],
-    ):
-        temp_labels = labels * weights
-        temp_preds = preds * weights
-        similarity = ssim(temp_labels, temp_preds)
-        similarities = np.append(similarities, similarity)
-
-    print("Average SSIM:", np.mean(similarities))
-    print("Standard deviation on SSIM:", np.std(similarities))
-
-    return all_inputs, all_labels, all_weights, all_preds, similarities
 
 
 def plot_transfer_learning(plot_idx, plot=True):
