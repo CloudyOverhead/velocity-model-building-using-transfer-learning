@@ -32,15 +32,28 @@ def main(args):
     if not exists(FIGURES_DIR):
         makedirs(FIGURES_DIR)
 
-    plot_idx = plot_50th_percentile(
-        args,
-        dataset=dataset,
-        plot=args.plot,
-    )
-    plot_transfer_learning(
-        plot_idx=plot_idx,
-        plot=args.plot,
-    )
+    if not args.no_inference:
+        launch_inference(args, dataset)
+
+    inputs, labels, weights, preds, similarities = compare_preds(dataset)
+
+    for percentile in [10, 50, 90]:
+        score = np.percentile(
+            similarities, percentile, interpolation="nearest",
+        )
+        idx = np.argwhere(score == similarities)[0, 0]
+        print(f"SSIM {percentile}th percentile:", score)
+        plot_example(
+            args,
+            dataset=dataset,
+            filename=dataset.files["test"][idx],
+            plot=args.plot,
+        )
+        if percentile == 50:
+            plot_transfer_learning(
+                plot_idx=idx,
+                plot=args.plot,
+            )
     plot_losses(
         logdir_1d=args.logdir_1d,
         params_1d=Hyperparameters1D(is_training=True),
@@ -50,36 +63,28 @@ def main(args):
     )
 
 
-def plot_50th_percentile(args, dataset, plot=True):
-    if not args.no_inference:
-        for logdir, savedir in zip(
-            [args.logdir_1d, args.logdir_2d], ["Pretraining", "PostTraining"],
-        ):
-            args = Namespace(
-                nn=RCNN2D,
-                params=Hyperparameters2D(is_training=False),
-                dataset=dataset,
-                logdir=logdir,
-                training=3,
-                gpus=args.gpus,
-                savedir=savedir,
-                plot=False,
-                debug=False,
-                eager=False,
-            )
-            global_main(args)
+def launch_inference(args, dataset):
+    for logdir, savedir in zip(
+        [args.logdir_1d, args.logdir_2d], ["Pretraining", "PostTraining"],
+    ):
+        args = Namespace(
+            nn=RCNN2D,
+            params=Hyperparameters2D(is_training=False),
+            dataset=dataset,
+            logdir=logdir,
+            training=3,
+            gpus=args.gpus,
+            savedir=savedir,
+            plot=False,
+            debug=False,
+            eager=False,
+        )
+        global_main(args)
 
-    inputs, labels, weights, preds, similarities = compare_preds(dataset)
 
-    print("Minimum SSIM:         ", min(similarities))
-    print("Maximum SSIM:         ", max(similarities))
-    score = np.percentile(similarities, 50, interpolation="nearest")
-    plot_idx = np.argwhere(score == similarities)[0, 0]
-    print("50th percentile index:", plot_idx)
-    print("SSIM 50th percentile :", score)
-
+def plot_example(args, dataset, filename, plot=True):
     inputs, labels, weights, filename = dataset.get_example(
-        filename=dataset.files["test"][plot_idx],
+        filename=filename,
         phase='test',
         toinputs=TOINPUTS,
         tooutputs=TOOUTPUTS,
@@ -288,8 +293,6 @@ def plot_50th_percentile(args, dataset, plot=True):
     else:
         plt.clf()
 
-    return plot_idx
-
 
 def compare_preds(dataset):
     all_inputs = {}
@@ -324,6 +327,9 @@ def compare_preds(dataset):
         temp_preds = preds * weights
         similarity = ssim(temp_labels, temp_preds)
         similarities = np.append(similarities, similarity)
+
+    print("Average SSIM:", np.mean(similarities))
+    print("Standard deviation on SSIM:", np.std(similarities))
 
     return all_inputs, all_labels, all_weights, all_preds, similarities
 
