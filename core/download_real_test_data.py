@@ -64,7 +64,7 @@ def download_data(save_dir):
         "report.pdf": "https://pubs.usgs.gov/of/1995/0027/report.pdf",
         "CSDS32_1.SGY": urljoin(PREFIX, "SE/001/39/CSDS32_1.SGY"),
     }
-    dfiles = [f"U32A_{i:02d}.SGY" for i in range(1, 10)]  # Up to 21.
+    dfiles = [f"U32A_{i:02d}.SGY" for i in range(1, 22)]  # Up to 21.
 
     if not isdir(save_dir):
         makedirs(save_dir)
@@ -126,12 +126,6 @@ def preprocess(data, fid, cid):
     data = np.concatenate(data, axis=1)
     fid = np.concatenate(fid)
     cid = np.concatenate(cid)
-
-    # recnoSpn = InterpText()
-    # recnoSpn.read('recnoSpn.txt')
-
-    # recnoDelrt = InterpText()
-    # recnoDelrt.read('recnoDelrt.txt')
 
     prev_fldr = -9999
     fldr_bias = 0
