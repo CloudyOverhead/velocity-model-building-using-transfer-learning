@@ -250,6 +250,7 @@ if __name__ == "__main__":
             save_file['shotgather'] = data_interpolated
             for label in ['ref', 'vrms', 'vint', 'vdepth']:
                 save_file[label] = dummy_label
+                save_file[label+'_w'] = dummy_label
 
     # Plot some shot gathers.
     plot(data_interpolated[:, :200])
