@@ -1,11 +1,47 @@
 # -*- coding: utf-8 -*-
 """Build the neural network for predicting v_p in 2D and in depth."""
 
+from os import isdir, mkdir
+from os.path import join
+
 from DefinedNN.RCNN2D import RCNN2D, Hyperparameters
 
 
 class RCNN2D(RCNN2D):
     pass
+
+
+class RCNN2DUnpackReal(RCNN2D):
+    def launch_testing(self, tfdataset, savedir):
+        if savedir is None:
+            savedir = type(self).__name__
+        savedir = join(self.dataset.datatest, savedir)
+        if not isdir(savedir):
+            mkdir(savedir)
+        if self.dataset.testsize % self.params.batch_size != 0:
+            raise ValueError(
+                "Your batch size must be a divisor of your dataset length."
+            )
+
+        for data, _ in tfdataset:
+            evaluated = self.predict(
+                data,
+                batch_size=self.params.batch_size,
+                max_queue_size=10,
+                use_multiprocessing=False,
+            )
+            for lbl, out in evaluated.items():
+                evaluated[lbl] = out[..., 0]
+
+            for i, example in enumerate(data["filename"]):
+                example = example.numpy().decode("utf-8")
+                exampleid = int(example.split("_")[-1])
+                example_evaluated = {
+                    lbl: out[i] for lbl, out in evaluated.items()
+                }
+                self.dataset.generator.write_predictions(
+                    exampleid, savedir, example_evaluated,
+                )
 
 
 class Hyperparameters1D(Hyperparameters):
