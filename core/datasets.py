@@ -117,6 +117,11 @@ class USGS(Article2D):
         self.validatesize = 0
         self.testsize = 1
 
+        NS = 964
+        model.NX = NS*acquire.ds + acquire.gmax + 2*acquire.Npad
+
+        acquire.NT = 3071 * acquire.resampling
+
         for name in inputs:
             inputs[name].mute_dir = False
         outputs = {}
