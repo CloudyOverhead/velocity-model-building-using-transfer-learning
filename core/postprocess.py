@@ -15,7 +15,7 @@ import segyio
 
 from main import main as global_main, int_or_list
 from core.architecture import RCNN2D, Hyperparameters1D, Hyperparameters2D
-from deep_learning_velocity_estimation.datasets import Article2D, USGS
+from core.datasets import Article2D, USGS
 
 FIGURES_DIR = join(pardir, "figures")
 TOINPUTS = ['shotgather']
