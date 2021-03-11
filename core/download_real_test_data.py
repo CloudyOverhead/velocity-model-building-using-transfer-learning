@@ -214,9 +214,9 @@ def interpolate_traces(data):
 
 def sort_receivers(data):
     """Have closest receivers first."""
-    data = data.reshape([NT, NG, NS])
-    data = data[:, ::-1]
-    data = data.reshape([NS, -1])
+    data = data.reshape([NT, NS, NG])
+    data = data[..., ::-1]
+    data = data.reshape([NT, -1])
     return data
 
 
