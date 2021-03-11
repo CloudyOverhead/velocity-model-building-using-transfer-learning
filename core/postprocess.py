@@ -449,6 +449,7 @@ def plot_real_data(args, dataset, plot=True):
     stacked_usgs = stacked_usgs[:, ::-1]
 
     times = np.arange(dataset.model.NT) * dataset.model.dt
+    times -= dataset.acquire.tdelay
     offsets = np.arange(dataset.acquire.gmin, dataset.acquire.gmax)
     offsets *= dataset.acquire.dh
     fig, axs = plt.subplot(
