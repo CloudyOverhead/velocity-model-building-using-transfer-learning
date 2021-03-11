@@ -32,7 +32,7 @@ The processed real data is available publicly at
 https://cmgds.marine.usgs.gov/fan_info.php?fan=1978-015-FA
 """
 
-from os import makedirs, pardir
+from os import makedirs
 from os.path import join, isfile, isdir
 from urllib.request import urlretrieve
 from urllib.parse import urljoin
@@ -46,6 +46,7 @@ import scipy.ndimage as ndimage
 
 # From the observer log, we get the acquisition parameters:
 NT = 3071
+NS = 964
 DS = 50  # Shot point spacing.
 DG1 = 100  # Geophone spacing for channels 1-24.
 DG2 = 50  # Geophone spacing for channels 25-48.
@@ -213,8 +214,6 @@ def interpolate_traces(data):
 
 def sort_receivers(data):
     """Have closest receivers first."""
-    NS = data.shape[-1] // NG
-    print("NS is", NS)
     data = data.reshape([NT, NG, NS])
     data = data[:, ::-1]
     data = data.reshape([NS, -1])
