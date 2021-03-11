@@ -37,6 +37,10 @@ def main(args):
 
     if not args.no_inference:
         launch_inference(args, dataset)
+        if isinstance(args.gpus, list):
+            args.gpus = [args.gpus[0]]
+        else:
+            args.gpus = 1
         launch_inference(args, dataset_real)
 
     inputs, labels, weights, preds, similarities = compare_preds(dataset)
