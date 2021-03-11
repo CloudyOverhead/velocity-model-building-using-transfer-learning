@@ -36,12 +36,14 @@ def main(args):
         makedirs(FIGURES_DIR)
 
     if not args.no_inference:
-        launch_inference(args, dataset)
+        params = Hyperparameters2D(is_training=False)
+        launch_inference(args, dataset, params)
         if isinstance(args.gpus, list):
             args.gpus = [args.gpus[0]]
         else:
             args.gpus = 1
-        launch_inference(args, dataset_real)
+        params.batch_size = 1
+        launch_inference(args, dataset_real, params)
 
     inputs, labels, weights, preds, similarities = compare_preds(dataset)
 
@@ -77,13 +79,13 @@ def main(args):
     )
 
 
-def launch_inference(args, dataset):
+def launch_inference(args, dataset, params):
     for logdir, savedir in zip(
         [args.logdir_1d, args.logdir_2d], ["Pretraining", "PostTraining"],
     ):
         args = Namespace(
             nn=RCNN2D,
-            params=Hyperparameters2D(is_training=False),
+            params=params,
             dataset=dataset,
             logdir=logdir,
             training=3,
