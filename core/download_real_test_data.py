@@ -242,11 +242,14 @@ if __name__ == "__main__":
     data, fid, cid = preprocess(data, fid, cid)
     data_interpolated = interpolate_traces(data)
     data_interpolated = sort_receivers(data_interpolated)
+    dummy_label = np.zeros([NT, NS])
     for i, dir in enumerate(["train", "test"]):
         save_path = join(SAVE_DIR, dir, f"example_{i}")
         with h5.File(save_path, "w") as save_file:
             save_file['sourcedata'] = data
             save_file['shotgather'] = data_interpolated
+            for label in ['ref', 'vrms', 'vint', 'vdepth']:
+                save_file[label] = dummy_label
 
     # Plot some shot gathers.
     plot(data_interpolated[:, :200])

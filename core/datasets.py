@@ -111,7 +111,7 @@ class USGS(Article2D):
     name = "USGS"
 
     def set_dataset(self):
-        model, acquire, inputs, _ = super().set_dataset()
+        model, acquire, inputs, outputs = super().set_dataset()
 
         self.trainsize = 1
         self.validatesize = 0
@@ -124,6 +124,5 @@ class USGS(Article2D):
 
         for name in inputs:
             inputs[name].mute_dir = False
-        outputs = {}
 
         return model, acquire, inputs, outputs
