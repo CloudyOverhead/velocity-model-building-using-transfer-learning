@@ -17,7 +17,7 @@ class Article1D(Dataset):
     name = "Article1D"
 
     def set_dataset(self):
-        self.trainsize = 10000
+        self.trainsize = 5000
         self.validatesize = 0
         self.testsize = 100
 
@@ -87,7 +87,7 @@ class Article2D(Article1D):
     def set_dataset(self):
         model, acquire, inputs, outputs = super().set_dataset()
 
-        self.trainsize = 1000
+        self.trainsize = 500
         self.validatesize = 0
         self.testsize = 100
 
