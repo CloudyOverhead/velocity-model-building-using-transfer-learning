@@ -456,10 +456,12 @@ def plot_real_data(args, dataset, plot=True):
     stacked_usgs = stacked_usgs[:, -2401:-160]
     stacked_usgs = stacked_usgs[:, ::-1]
 
-    times = np.arange(dataset.model.NT) * dataset.model.dt
+    times = np.arange(dataset.acquire.NT) * dataset.acquire.dt
     times -= dataset.acquire.tdelay
-    offsets = np.arange(dataset.acquire.gmin, dataset.acquire.gmax)
-    offsets *= dataset.acquire.dh
+    offsets = np.arange(
+        dataset.acquire.gmin, dataset.acquire.gmax, dtype=float,
+    )
+    offsets *= dataset.model.dh
     fig, axs = plt.subplot(
         nrows=5, figsize=[6.66, 6], constrained_layout=False, sharex=True,
         sharey=True,
