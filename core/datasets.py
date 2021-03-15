@@ -19,7 +19,7 @@ class Article1D(Dataset):
     def set_dataset(self):
         self.trainsize = 5000
         self.validatesize = 0
-        self.testsize = 100
+        self.testsize = 10
 
         model = MarineModel()
         model.dh = 6.25
