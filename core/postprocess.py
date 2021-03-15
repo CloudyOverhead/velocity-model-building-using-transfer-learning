@@ -14,7 +14,9 @@ from GeoFlow.SeismicUtilities import sortcmp, stack
 import segyio
 
 from main import main as global_main, int_or_list
-from core.architecture import RCNN2D, Hyperparameters1D, Hyperparameters2D
+from core.architecture import (
+    RCNN2D, RCNN2DUnpackReal, Hyperparameters1D, Hyperparameters2D,
+)
 from core.datasets import Article2D, USGS
 
 FIGURES_DIR = join(pardir, "figures")
@@ -42,8 +44,6 @@ def main(args):
             args.gpus = [args.gpus[0]]
         else:
             args.gpus = 1
-        params.batch_size = 1
-        launch_inference(args, dataset_real, params)
 
     inputs, labels, weights, preds, similarities = compare_preds(dataset)
 
@@ -72,6 +72,7 @@ def main(args):
         params_2d=Hyperparameters2D(is_training=True),
         plot=args.plot,
     )
+        launch_inference(args, RCNN2DUnpackReal, dataset_real, params)
     plot_real_data(
         args,
         dataset=dataset_real,
@@ -79,12 +80,12 @@ def main(args):
     )
 
 
-def launch_inference(args, dataset, params):
+def launch_inference(args, nn, dataset, params):
     for logdir, savedir in zip(
         [args.logdir_1d, args.logdir_2d], ["Pretraining", "PostTraining"],
     ):
         args = Namespace(
-            nn=RCNN2D,
+            nn=nn,
             params=params,
             dataset=dataset,
             logdir=logdir,
@@ -437,13 +438,14 @@ def plot_losses(logdir_1d, params_1d, logdir_2d, params_2d, plot=True):
 
 
 def plot_real_data(args, dataset, plot=True):
-    inputs, _, _ = dataset.generator.read("example_1")
+    filename = join(dataset.basepath, dataset.name, "test", "example_1")
+    inputs, _, _ = dataset.generator.read(filename)
     shotgather = inputs['shotgather']
     src_pos, rec_pos = dataset.acquire.set_rec_src()
     datacmp, cmps = sortcmp(shotgather, src_pos, rec_pos)
-    pretrained = dataset.generator.read_predictions("example_1", "Pretraining")
+    pretrained = dataset.generator.read_predictions(filename, "Pretraining")
     pretrained = {name: pretrained[name] for name in TOOUTPUTS}
-    preds = dataset.generator.read_predictions("example_1", "PostTraining")
+    preds = dataset.generator.read_predictions(filename, "PostTraining")
     preds = {name: preds[name] for name in TOOUTPUTS}
 
     stacked_filepath = join(dataset.datatest, "CSDS32_1.SGY")
