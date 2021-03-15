@@ -16,6 +16,7 @@ import segyio
 from main import main as global_main, int_or_list
 from core.architecture import (
     RCNN2D, RCNN2DUnpackReal, Hyperparameters1D, Hyperparameters2D,
+    Hyperparameters2DNoTL,
 )
 from core.datasets import Article2D, USGS
 
@@ -40,6 +41,19 @@ def main(args):
     if not args.no_inference:
         params = Hyperparameters2D(is_training=False)
         launch_inference(args, RCNN2D, dataset, params)
+        args_no_tl = Namespace(
+            nn=RCNN2D,
+            params=Hyperparameters2DNoTL(is_training=False),
+            dataset=dataset,
+            logdir=args.logdir_2d_no_tl,
+            training=3,
+            gpus=args.gpus,
+            savedir="NoTL",
+            plot=False,
+            debug=False,
+            eager=False,
+        )
+        global_main(args_no_tl)
         if isinstance(args.gpus, list):
             args.gpus = [args.gpus[0]]
         else:
@@ -499,6 +513,14 @@ if __name__ == "__main__":
         "--logdir_2d",
         type=str,
         help="Directory in which the checkpoints for the 2D case are stored.",
+    )
+    parser.add_argument(
+        "--logdir_2d_no_tl",
+        type=str,
+        help=(
+            "Directory in which the checkpoints for the 2D case without "
+            "transfer learning are stored."
+        ),
     )
     parser.add_argument(
         "--gpus",
