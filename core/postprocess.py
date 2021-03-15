@@ -39,11 +39,12 @@ def main(args):
 
     if not args.no_inference:
         params = Hyperparameters2D(is_training=False)
-        launch_inference(args, dataset, params)
+        launch_inference(args, RCNN2D, dataset, params)
         if isinstance(args.gpus, list):
             args.gpus = [args.gpus[0]]
         else:
             args.gpus = 1
+        launch_inference(args, RCNN2DUnpackReal, dataset_real, params)
 
     inputs, labels, weights, preds, similarities = compare_preds(dataset)
 
@@ -72,7 +73,6 @@ def main(args):
         params_2d=Hyperparameters2D(is_training=True),
         plot=args.plot,
     )
-        launch_inference(args, RCNN2DUnpackReal, dataset_real, params)
     plot_real_data(
         args,
         dataset=dataset_real,
