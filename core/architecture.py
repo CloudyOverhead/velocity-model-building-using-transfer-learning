@@ -67,9 +67,8 @@ class RCNN2DUnpackReal(RCNN2D):
             example = filename.numpy().decode("utf-8")
             exampleid = int(example.split("_")[-1])
             example_evaluated = {
-                lbl: out[0] for lbl, out in evaluated.items()
+                lbl: out for lbl, out in evaluated.items()
             }
-            print({lbl: out.shape for lbl, out in evaluated.items()})
             self.dataset.generator.write_predictions(
                 exampleid, savedir, example_evaluated,
             )
