@@ -19,7 +19,7 @@ from core.architecture import (
 )
 from core.datasets import Article2D, USGS
 
-FIGURES_DIR = join(pardir, "figures")
+FIGURES_DIR = "figures"
 TOINPUTS = ['shotgather']
 TOOUTPUTS = ['ref', 'vrms', 'vint']
 
