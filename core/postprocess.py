@@ -448,7 +448,7 @@ def plot_real_data(args, dataset, plot=True):
     preds = dataset.generator.read_predictions(filename, "PostTraining")
     preds = {name: preds[name] for name in TOOUTPUTS}
 
-    stacked_filepath = join(dataset.datatest, "CSDS32_1.SGY")
+    stacked_filepath = join(dataset.basepath, dataset.name, "CSDS32_1.SGY")
     with segyio.open(stacked_filepath, "r", ignore_geometry=True) as segy:
         stacked_usgs = [segy.trace[trid] for trid in range(segy.tracecount)]
         stacked_usgs = np.array(stacked_usgs)
