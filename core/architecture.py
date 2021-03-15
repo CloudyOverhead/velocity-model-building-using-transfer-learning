@@ -149,3 +149,14 @@ class Hyperparameters2D(Hyperparameters1D):
                 "/lambda_85f1b_00000_0_2021-02-11_16-38-47/checkpoint_150"
             )
             self.restore_from = (CHECKPOINT_1D, None, None)
+
+
+class Hyperparameters2DNoTL(Hyperparameters2D):
+    def __init__(self, is_training=True):
+        super().__init__(is_training=is_training)
+
+        self.epochs *= 2
+
+        self.learning_rate = 8E-4
+
+        self.restore_from = None
