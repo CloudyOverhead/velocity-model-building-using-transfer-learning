@@ -47,8 +47,8 @@ class Article1D(Dataset):
         acquire.peak_freq = 26
         acquire.df = 5
         acquire.wavefuns = [0, 1]
-        acquire.source_depth = 6.4  # Approximate average value.
-        acquire.receiver_depth = 13.7  # Approximate average value.
+        acquire.source_depth = (acquire.Npad+4) * model.dh
+        acquire.receiver_depth = (acquire.Npad+4) * model.dh
         acquire.tdelay = 3.0 / (acquire.peak_freq-acquire.df)
         acquire.singleshot = True
         acquire.configuration = 'inline'
