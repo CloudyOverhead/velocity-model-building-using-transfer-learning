@@ -84,7 +84,7 @@ def launch_inference(args, nn, dataset, params):
     for logdir, savedir in zip(
         [args.logdir_1d, args.logdir_2d], ["Pretraining", "PostTraining"],
     ):
-        args = Namespace(
+        current_args = Namespace(
             nn=nn,
             params=params,
             dataset=dataset,
@@ -96,7 +96,7 @@ def launch_inference(args, nn, dataset, params):
             debug=False,
             eager=False,
         )
-        global_main(args)
+        global_main(current_args)
 
 
 def compare_preds(dataset):
