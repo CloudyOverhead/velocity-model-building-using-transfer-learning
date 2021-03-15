@@ -462,7 +462,7 @@ def plot_real_data(args, dataset, plot=True):
         dataset.acquire.gmin, dataset.acquire.gmax, dtype=float,
     )
     offsets *= dataset.model.dh
-    fig, axs = plt.subplot(
+    fig, axs = plt.subplots(
         nrows=5, figsize=[6.66, 6], constrained_layout=False, sharex=True,
         sharey=True,
     )
