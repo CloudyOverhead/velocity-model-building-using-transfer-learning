@@ -108,7 +108,7 @@ class Hyperparameters1D(Hyperparameters):
     def __init__(self, is_training=True):
         super().__init__()
 
-        self.epochs = 40
+        self.epochs = 20
         self.steps_per_epoch = 100
         self.batch_size = 24
 
@@ -128,8 +128,6 @@ class Hyperparameters2D(Hyperparameters1D):
         super().__init__(is_training=is_training)
 
         self.batch_size = 2
-
-        self.learning_rate = 8E-5
 
         self.encoder_kernels = [
             [15, 1, 1],
