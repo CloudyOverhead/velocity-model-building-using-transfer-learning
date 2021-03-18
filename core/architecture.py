@@ -118,7 +118,7 @@ class Hyperparameters1D(Hyperparameters):
             self.loss_scales = (
                 {'ref': .8, 'vrms': .2, 'vint': .0, 'vdepth': .0},
                 {'ref': .1, 'vrms': .7, 'vint': .2, 'vdepth': .0},
-                {'ref': .1, 'vrms': .1, 'vint': .8, 'vdepth': .0},
+                {'ref': .0, 'vrms': .2, 'vint': .5, 'vdepth': .3},
             )
             self.seed = (0, 1, 2)
 
