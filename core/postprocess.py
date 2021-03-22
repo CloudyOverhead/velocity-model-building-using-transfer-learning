@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from argparse import ArgumentParser, Namespace
-from os import makedirs, listdir, pardir
+from os import makedirs, listdir
 from os.path import join, exists
 
 import numpy as np
@@ -41,6 +41,10 @@ def main(args):
     if not args.no_inference:
         params = Hyperparameters2D(is_training=False)
         launch_inference(args, RCNN2D, dataset, params)
+        print(
+            f"Launching 2D inference on dataset `{dataset.name}` without "
+            f"transfer learning."
+        )
         args_no_tl = Namespace(
             nn=RCNN2D,
             params=Hyperparameters2DNoTL(is_training=False),
@@ -95,9 +99,12 @@ def main(args):
 
 
 def launch_inference(args, nn, dataset, params):
-    for logdir, savedir in zip(
-        [args.logdir_1d, args.logdir_2d], ["Pretraining", "PostTraining"],
+    for case, logdir, savedir in zip(
+        ["1D", "2D"],
+        [args.logdir_1d, args.logdir_2d],
+        ["Pretraining", "PostTraining"],
     ):
+        print(f"Launching {case} inference on dataset `{dataset.name}`.")
         current_args = Namespace(
             nn=nn,
             params=params,
@@ -114,6 +121,7 @@ def launch_inference(args, nn, dataset, params):
 
 
 def compare_preds(dataset):
+    print("Comparing predictions.")
     all_inputs = {}
     all_labels = {}
     all_weights = {}
