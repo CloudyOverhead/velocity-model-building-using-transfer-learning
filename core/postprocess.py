@@ -3,6 +3,7 @@
 from argparse import ArgumentParser, Namespace
 from os import makedirs, listdir
 from os.path import join, exists
+from copy import deepcopy
 
 import numpy as np
 import pandas as pd
@@ -442,14 +443,16 @@ def plot_losses(logdir_1d, params_1d, logdir_2d, params_2d, plot=True):
 
     LABEL_NAMES = {
         'loss': "Total loss",
-        'ref_loss': "Primaries identification",
-        'vrms_loss': "$v_\\mathrm{RMS}$",
-        'vint_loss': "$v_\\mathrm{int}$",
+        'ref_loss': "Primaries",
+        'vrms_loss': "$v_\\mathrm{RMS}(t, x)$",
+        'vint_loss': "$v_\\mathrm{int}(t, x)$",
+        'vdepth_loss': "$v_\\mathrm{int}(z, x)$",
     }
     data.columns = [column.split('/')[-1] for column in data.columns]
     for column in data.columns:
         if column not in LABEL_NAMES.keys():
             del data[column]
+    plt.figure(figsize=[3.33, 2.5])
     for column in LABEL_NAMES.keys():
         if column == 'loss':
             plt.plot(
@@ -479,7 +482,14 @@ def plot_losses(logdir_1d, params_1d, logdir_2d, params_2d, plot=True):
     plt.ylim([10**(np.log10(vmin)-.1*diff), 10**(np.log10(vmax)+.1*diff)])
     plt.xlabel("Epoch")
     plt.ylabel("Loss")
-    plt.legend(loc='lower center', bbox_to_anchor=(.5, 1), ncol=4)
+    plt.legend(
+        loc='lower center',
+        bbox_to_anchor=(.5, 1),
+        ncol=len(LABEL_NAMES),
+        handlelength=.25,
+        handletextpad=.5,
+        columnspacing=1.0,
+    )
     plt.minorticks_on()
     plt.grid(which='major', alpha=.6)
     plt.grid(which='minor', alpha=.15)
