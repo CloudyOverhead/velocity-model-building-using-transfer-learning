@@ -478,19 +478,23 @@ def plot_real_data(args, dataset, plot=True):
     stacked_usgs = stacked_usgs[:, -2401:-160]
     stacked_usgs = stacked_usgs[:, ::-1]
 
-    times = np.arange(dataset.acquire.NT) * dataset.acquire.dt
-    times -= dataset.acquire.tdelay
+    resampling = dataset.acquire.resampling
+    dt = dataset.acquire.dt * resampling
+    tdelay = dataset.acquire.tdelay
+    nt = dataset.acquire.NT
+    times = np.arange(nt//resampling)*dt - tdelay
     offsets = np.arange(
-        dataset.acquire.gmin, dataset.acquire.gmax, dtype=float,
+        dataset.acquire.gmin, dataset.acquire.gmax, dataset.acquire.dg,
     )
-    offsets *= dataset.model.dh
     fig, axs = plt.subplots(
         nrows=5, figsize=[6.66, 6], constrained_layout=False, sharex=True,
         sharey=True,
     )
     axs[0].imshow(pretrained['vint'])
+    print("Stacking 1D case.")
     axs[1].imshow(stack_2d(datacmp, times, offsets, pretrained['vrms']))
     axs[2].imshow(preds['vint'])
+    print("Stacking 2D case.")
     axs[3].imshow(stack_2d(datacmp, times, offsets, preds['vrms']))
     axs[4].imshow(stacked_usgs)
 
@@ -504,7 +508,10 @@ def plot_real_data(args, dataset, plot=True):
 
 def stack_2d(cmps, times, offsets, velocities):
     stacked = []
-    for cmp, velocities_1d in zip(cmps.T, velocities.T):
+    cmps = cmps.transpose([2, 0, 1])
+    velocities = velocities.T
+    for i, (cmp, velocities_1d) in enumerate(zip(cmps, velocities)):
+        print(f"Stacking gather {i+1} out of {len(cmps)}.")
         stacked.append(stack(cmp, times, offsets, velocities_1d))
     stacked = np.array(stacked).T
     return stacked
