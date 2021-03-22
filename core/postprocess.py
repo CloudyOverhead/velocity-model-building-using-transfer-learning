@@ -22,7 +22,7 @@ from core.datasets import Article2D, USGS
 
 FIGURES_DIR = "figures"
 TOINPUTS = ['shotgather']
-TOOUTPUTS = ['ref', 'vrms', 'vint']
+TOOUTPUTS = ['ref', 'vrms', 'vint', 'vdepth']
 
 plt.rcParams.update(
     {'font.size': 8, 'figure.figsize': [4.33, 2.5], 'figure.dpi': 1200}
@@ -180,23 +180,37 @@ def plot_example(args, dataset, filename, figure_name, plot=True):
 
     ref = labels['ref']
     crop_top = int(np.nonzero(ref.astype(bool).any(axis=1))[0][0] * .95)
+    dh = dataset.model.dh
+    dt = dataset.acquire.dt * dataset.acquire.resampling
+    vmin, vmax = dataset.model.properties['vp']
+    diff = vmax - vmin
+    water_v = float(labels['vint'][0, 0])*diff + vmin
+    tdelay = dataset.acquire.tdelay
+    crop_top_depth = int((crop_top-tdelay/dt)*dt/2*water_v/dh)
+    mask = weights['vdepth']
+    crop_bottom_depth = int(np.nonzero((~mask.astype(bool)).all(axis=1))[0][0])
     for col in [*cols, weights]:
         for row_name, row in col.items():
-            col[row_name] = row[crop_top:]
+            if row_name != 'vdepth':
+                col[row_name] = row[crop_top:]
+            else:
+                col[row_name] = row[crop_top_depth:crop_bottom_depth]
 
-    dt = dataset.acquire.dt * dataset.acquire.resampling
-    water_dmin = dataset.model.water_dmin
-    water_vmin = dataset.model.water_vmin
     tdelay = dataset.acquire.tdelay
-    start_time = crop_top*dt + 2*water_dmin/water_vmin - tdelay
+    start_time = crop_top*dt - tdelay
     time = np.arange(len(labels['ref']))*dt + start_time
+    dh = dataset.model.dh
+    src_rec_depth = dataset.acquire.source_depth
+    start_depth = crop_top_depth*dh + src_rec_depth
+    depth = np.arange(len(labels['vdepth']))*dh + start_depth
 
     src_pos, rec_pos = dataset.acquire.set_rec_src()
     _, cmps = sortcmp(None, src_pos, rec_pos)
     cmps /= 1000
+    depth /= 1000
 
-    NROWS = 4
-    QTY_IMS = 11
+    NROWS = 5
+    QTY_IMS = 14
     NCOLS = 3
 
     fig = plt.figure(figsize=[6.66, 6], constrained_layout=False)
@@ -216,7 +230,6 @@ def plot_example(args, dataset, filename, figure_name, plot=True):
             axs.append(ax)
     ims = [None for _ in range(QTY_IMS)]
 
-    mask = weights['vrms']
     n = 0
     for col, col_meta in zip(cols, cols_meta):
         for row_name in col:
@@ -228,6 +241,10 @@ def plot_example(args, dataset, filename, figure_name, plot=True):
                 data = col_meta[row_name].postprocess(data)
             except AttributeError:
                 pass
+            if row_name != 'vdepth':
+                mask = weights['vrms']
+            else:
+                mask = weights['vdepth']
             output_ims = col_meta[row_name].plot(
                 data, weights=mask, axs=input_axs, ims=input_ims,
             )
@@ -242,6 +259,10 @@ def plot_example(args, dataset, filename, figure_name, plot=True):
         ax.images[0].set_extent(
             [cmps.min(), cmps.max(), time.max(), time.min()]
         )
+    for ax in axs[:1:-NROWS+1]:
+        ax.images[0].set_extent(
+            [cmps.min(), cmps.max(), depth.max(), depth.min()]
+        )
     for ax in axs:
         ax.tick_params(which='minor', length=2)
         ax.minorticks_on()
@@ -254,29 +275,34 @@ def plot_example(args, dataset, filename, figure_name, plot=True):
                 cbar.remove()
 
     axs[0].set_title("First CMP\ngather")
-    axs[0].set_ylabel("Two-way\ntraveltime (s)")
+    axs[0].set_ylabel("$T$ (s)")
     axs[0].set_xlabel("Receiver position (km)")
 
-    axs[1].set_title("Nearest offset\ngather")
+    axs[1].set_title("Constant offset\ngather")
     axs[1].set_yticklabels([])
     axs[1].set_xlabel("CMP (km)")
 
-    vmin, vmax = dataset.model.properties['vp']
-    diff = vmax - vmin
     vmin -= .05 * diff
     vmax += .05 * diff
-    TO_SLICE = ['vint', 'vrms']
-    START_AX_IDX = [3, 4]
+    TO_SLICE = ['vrms', 'vint', 'vdepth']
+    START_AX_IDX = [3, 4, 5]
     LINE_LABELS = ["Pretraining", "Post-training", "Expected"]
+    ZORDERS = [2, 3, 1]
     line_axs = []
     for i, (label_name, start_idx) in enumerate(zip(TO_SLICE, START_AX_IDX)):
         line_ax = fig.add_subplot(gs[i+2, 7])
         line_axs.append(line_ax)
-        for ax, label in zip(axs[start_idx:start_idx+3*3:3], LINE_LABELS):
+        for ax, label, zorder in zip(
+            axs[start_idx:start_idx+3*4:4], LINE_LABELS, ZORDERS,
+        ):
             data = ax.images[0].get_array()
-            center_data = data[:, data.shape[1] // 2]
-            y_min, y_max = time.min(), time.max()
-            line_ax.plot(center_data, time, label=label)
+            center_data = data[:, data.shape[1] // 2] / 1000
+            if label_name != 'vdepth':
+                y_min, y_max = time.min(), time.max()
+                line_ax.plot(center_data, time, zorder=zorder, label=label)
+            else:
+                y_min, y_max = depth.min(), depth.max()
+                line_ax.plot(center_data, depth, zorder=zorder, label=label)
             height = y_max-y_min
             x = cmps[data.shape[1]//2]
             dcmp = cmps[1] - cmps[2]
@@ -290,7 +316,7 @@ def plot_example(args, dataset, filename, figure_name, plot=True):
                 fc='none',
             )
             ax.add_patch(rect)
-        line_ax.set_xlim(vmin, vmax)
+        line_ax.set_xlim(vmin/1000, vmax/1000)
         line_ax.set_ylim(y_max, y_min)
         line_ax.set_yticklabels([])
         line_ax.grid()
@@ -302,31 +328,35 @@ def plot_example(args, dataset, filename, figure_name, plot=True):
                 handlelength=.25,
             )
         if i == len(TO_SLICE) - 1:
-            line_ax.set_xlabel("Velocity (m/s)")
+            line_ax.set_xlabel("Velocity (km/s)")
         else:
             line_ax.set_xticklabels([])
 
-    gs.update(wspace=.15, hspace=.2)
+    gs.update(wspace=.15, hspace=.25)
     for ax in axs[:2]:
         box = ax.get_position()
         box.y0 += .08
         box.y1 += .08
         ax.set_position(box)
     TITLES = {
-        'ref': "Primaries\nidentification",
+        'ref': "Primaries",
         'vrms': "$v_\\mathrm{RMS}(t, x)$",
         'vint': "$v_\\mathrm{int}(t, x)$",
+        'vdepth': "$v_\\mathrm{int}(z, x)$",
     }
     for i, label_name in enumerate(TOOUTPUTS):
         axs[2+i].annotate(
             TITLES[label_name],
-            (-.65, .5),
+            (-.35, .5),
             xycoords="axes fraction",
             va="center",
             ha="center",
             rotation=90,
         )
-        axs[2+i].set_ylabel("Two-way\ntraveltime (s)")
+        if label_name != 'vdepth':
+            axs[2+i].set_ylabel("$T$ (s)")
+        else:
+            axs[2+i].set_ylabel("$z$ (km)")
     for ax in axs[2:2+NROWS]:
         ax.yaxis.set_tick_params(which='both', labelleft=True)
     for i in range(NROWS-2):
@@ -349,13 +379,15 @@ def plot_example(args, dataset, filename, figure_name, plot=True):
         [left, bottom+unpad_y, width-2*unpad_x, height-unpad_y]
     )
     cbar = plt.colorbar(axs[3].images[0], cax=cax)
-    cbar.ax.set_ylabel("Velocity\n(m/s)")
+    cbar.ax.set_ylabel("Velocity\n(km/s)")
     cbar.set_ticks(range(2000, 5000, 1000))
+    cbar.set_ticklabels(range(2, 5, 1))
 
-    temp_axs = [*axs[:2], *np.array(axs[2:]).reshape([3, 3]).T.flatten()]
-    temp_axs.insert(-3, line_axs[0])
-    temp_axs.append(line_axs[1])
-    for ax, letter in zip(temp_axs, range(ord('a'), ord('m')+1)):
+    temp_axs = [*axs[:2], *np.array(axs[2:]).reshape([3, 4]).T.flatten()]
+    temp_axs.insert(-6, line_axs[0])
+    temp_axs.insert(-3, line_axs[1])
+    temp_axs.append(line_axs[2])
+    for ax, letter in zip(temp_axs, range(ord('a'), ord('q')+1)):
         letter = f"({chr(letter)})"
         plt.sca(ax)
         x0, _ = plt.xlim()
