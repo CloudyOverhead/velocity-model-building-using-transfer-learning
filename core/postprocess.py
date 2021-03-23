@@ -279,7 +279,7 @@ def plot_example(args, dataset, filename, figure_name, plot=True):
     axs[0].set_ylabel("$T$ (s)")
     axs[0].set_xlabel("Receiver position (km)")
 
-    axs[1].set_title("Constant offset\ngather")
+    axs[1].set_title("Constant-offset\ngather")
     axs[1].set_yticklabels([])
     axs[1].set_xlabel("CMP (km)")
 
