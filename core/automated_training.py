@@ -34,6 +34,11 @@ parser.add_argument(
     ),
 )
 parser.add_argument(
+    "--noise",
+    action='store_true',
+    help="Add statics, noise and random gain to input data.",
+)
+parser.add_argument(
     "--debug",
     action='store_true',
     help="Generate a small dataset of 5 examples.",
@@ -48,7 +53,7 @@ config = {
     name[2:]: eval(value) for name, value in zip(config[::2], config[1::2])
 }
 
-args.dataset = getattr(datasets, args.dataset)()
+args.dataset = getattr(datasets, args.dataset)(args.noise)
 args.params = getattr(architecture, args.params)()
 
 if args.debug:

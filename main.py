@@ -78,6 +78,11 @@ if __name__ == "__main__":
         ),
     )
     parser.add_argument(
+        "--noise",
+        action='store_true',
+        help="Add statics, noise and random gain to input data.",
+    )
+    parser.add_argument(
         "--plot",
         action='store_true',
         help="Validate data by plotting.",
@@ -95,7 +100,7 @@ if __name__ == "__main__":
 
     args, unknown_args = parser.parse_known_args()
     args.nn = getattr(architecture, args.nn)
-    args.dataset = getattr(datasets, args.dataset)()
+    args.dataset = getattr(datasets, args.dataset)(args.noise)
     is_training = args.training in [1, 2]
     args.params = getattr(architecture, args.params)(is_training=is_training)
     for arg, value in zip(unknown_args[::2], unknown_args[1::2]):
