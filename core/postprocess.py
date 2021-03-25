@@ -276,12 +276,12 @@ def plot_example(args, dataset, filename, figure_name, plot=True):
                 cbar.remove()
 
     axs[0].set_title("First CMP\ngather")
-    axs[0].set_ylabel("$T$ (s)")
-    axs[0].set_xlabel("Receiver position (km)")
+    axs[0].set_ylabel("$t$ (s)")
+    axs[0].set_xlabel("$h$ (km)")
 
     axs[1].set_title("Constant-offset\ngather")
     axs[1].set_yticklabels([])
-    axs[1].set_xlabel("CMP (km)")
+    axs[1].set_xlabel("$x$ (km)")
 
     vmin -= .05 * diff
     vmax += .05 * diff
@@ -355,7 +355,7 @@ def plot_example(args, dataset, filename, figure_name, plot=True):
             rotation=90,
         )
         if label_name != 'vdepth':
-            axs[2+i].set_ylabel("$T$ (s)")
+            axs[2+i].set_ylabel("$t$ (s)")
         else:
             axs[2+i].set_ylabel("$z$ (km)")
     for ax in axs[2:2+NROWS]:
@@ -367,7 +367,7 @@ def plot_example(args, dataset, filename, figure_name, plot=True):
         for j in range(1, NCOLS):
             axs[2+i+(NROWS-1)*j].set_yticklabels([])
     for i in range(NCOLS):
-        axs[2+(i+1)*(NROWS-1)-1].set_xlabel("CMP (km)")
+        axs[2+(i+1)*(NROWS-1)-1].set_xlabel("$x$ (km)")
     axs[2].set_title("Pretraining")
     axs[2+NROWS-1].set_title("Post-training")
     axs[2+2*(NROWS-1)].set_title("Expected")
