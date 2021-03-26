@@ -121,7 +121,7 @@ def launch_inference(args, nn, dataset, params):
         global_main(current_args)
 
 
-def compare_preds(dataset):
+def compare_preds(dataset, savedir):
     print("Comparing predictions.")
     all_inputs = {}
     all_labels = {}
@@ -134,7 +134,7 @@ def compare_preds(dataset):
             toinputs=RCNN2D.toinputs,
             tooutputs=RCNN2D.tooutputs,
         )
-        preds = dataset.generator.read_predictions(filename, "PostTraining")
+        preds = dataset.generator.read_predictions(filename, savedir)
         target_dicts = [all_inputs, all_labels, all_weights, all_preds]
         current_dicts = [inputs, labels, weights, preds]
         for target_dict, current_dict in zip(target_dicts, current_dicts):
