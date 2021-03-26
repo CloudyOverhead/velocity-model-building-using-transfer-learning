@@ -148,6 +148,7 @@ def compare_preds(dataset):
                     target_dict[key] = current_array
 
     similarities = np.array([])
+    rmses = np.array([])
     for labels, weights, preds in zip(
         all_labels["vint"], all_weights["vint"], all_preds["vint"],
     ):
@@ -155,9 +156,15 @@ def compare_preds(dataset):
         temp_preds = preds * weights
         similarity = ssim(temp_labels, temp_preds)
         similarities = np.append(similarities, similarity)
+        rmse = np.sqrt(np.mean((temp_labels-temp_preds)**2))
+        rmses = np.append(rmses, rmse)
+    vmin, vmax = dataset.model.properties['vp']
+    rmses *= vmax - vmin
 
     print("Average SSIM:", np.mean(similarities))
     print("Standard deviation on SSIM:", np.std(similarities))
+    print("Average RMSE:", np.mean(rmses))
+    print("Standard deviation on RMSE:", np.std(rmses))
 
     return all_inputs, all_labels, all_weights, all_preds, similarities
 
