@@ -221,7 +221,7 @@ def plot_example(args, dataset, filename, figure_name, plot=True):
     QTY_IMS = 14
     NCOLS = 3
 
-    fig = plt.figure(figsize=[6.66, 6], constrained_layout=False)
+    fig = plt.figure(figsize=[6.5, 7.5], constrained_layout=False)
     gs = fig.add_gridspec(
         nrows=NROWS,
         ncols=NCOLS*2+2,
@@ -294,7 +294,7 @@ def plot_example(args, dataset, filename, figure_name, plot=True):
     vmax += .05 * diff
     TO_SLICE = ['vrms', 'vint', 'vdepth']
     START_AX_IDX = [3, 4, 5]
-    LINE_LABELS = ["Pretraining", "Post-training", "Expected"]
+    LINE_LABELS = ["Pretraining", "End estimate", "Expected"]
     ZORDERS = [2, 3, 1]
     line_axs = []
     for i, (label_name, start_idx) in enumerate(zip(TO_SLICE, START_AX_IDX)):
@@ -330,21 +330,21 @@ def plot_example(args, dataset, filename, figure_name, plot=True):
         line_ax.grid()
         if i == 0:
             line_ax.legend(
-                loc='lower right',
-                bbox_to_anchor=(1.1, 1.),
-                fontsize=4,
-                handlelength=.25,
+                loc='lower center',
+                bbox_to_anchor=(.5, 1.125),
+                fontsize=6,
+                handlelength=.2,
             )
         if i == len(TO_SLICE) - 1:
             line_ax.set_xlabel("Velocity (km/s)")
         else:
             line_ax.set_xticklabels([])
 
-    gs.update(wspace=.15, hspace=.25)
+    gs.update(wspace=.15, hspace=.2)
     for ax in axs[:2]:
         box = ax.get_position()
-        box.y0 += .08
-        box.y1 += .08
+        box.y0 += .06
+        box.y1 += .06
         ax.set_position(box)
     TITLES = {
         'ref': "Primaries",
@@ -376,12 +376,12 @@ def plot_example(args, dataset, filename, figure_name, plot=True):
     for i in range(NCOLS):
         axs[2+(i+1)*(NROWS-1)-1].set_xlabel("$x$ (km)")
     axs[2].set_title("Pretraining")
-    axs[2+NROWS-1].set_title("Post-training")
+    axs[2+NROWS-1].set_title("End estimate")
     axs[2+2*(NROWS-1)].set_title("Expected")
 
     position = gs[1, 7].get_position(fig)
     left, bottom, width, height = position.bounds
-    unpad_y = .3 * height
+    unpad_y = .4 * height
     unpad_x = .4 * width
     cax = fig.add_axes(
         [left, bottom+unpad_y, width-2*unpad_x, height-unpad_y]
