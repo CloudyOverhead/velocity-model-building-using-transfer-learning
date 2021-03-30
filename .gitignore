@@ -9,3 +9,5 @@ data
 workdir*
 out*
 *.out
+.eggs
+*.egg-info
