@@ -110,7 +110,7 @@ def launch_inference(args, nn, dataset, params_1d, params_2d):
         ["1D", "2D"],
         [args.logdir_1d, args.logdir_2d],
         ["Pretraining", "PostTraining"],
-        [params_1d, params_2]
+        [params_1d, params_2d]
     ):
         print(f"Launching {case} inference on dataset `{dataset.name}`.")
         current_args = Namespace(
