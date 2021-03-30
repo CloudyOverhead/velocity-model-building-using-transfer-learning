@@ -684,16 +684,19 @@ if __name__ == "__main__":
     parser.add_argument(
         "--logdir_1d",
         type=str,
+        default='logs/weights_1d',
         help="Directory in which the checkpoints for the 1D case are stored.",
     )
     parser.add_argument(
         "--logdir_2d",
         type=str,
+        default='logs/weights_2d',
         help="Directory in which the checkpoints for the 2D case are stored.",
     )
     parser.add_argument(
         "--logdir_2d_no_tl",
         type=str,
+        default='logs/weights_2d_no_tl',
         help=(
             "Directory in which the checkpoints for the 2D case without "
             "transfer learning are stored."
