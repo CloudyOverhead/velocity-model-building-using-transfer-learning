@@ -52,9 +52,9 @@ def main(args):
     if not args.no_inference:
         launch_inference(
             RCNN2D,
-            Hyperparameters2DNoTL(is_training=False),
+            Hyperparameters2D(is_training=False),
             dataset_train,
-            args.logdir_2d_no_tl,
+            args.logdir_2d,
             args.gpus,
             None,
         )
