@@ -126,7 +126,7 @@ def launch_inference(args, nn, dataset, params_1d, params_2d):
 
 
 def compare_preds(dataset, savedir):
-    print("Comparing predictions.")
+    print(f"Comparing predictions for directory {savedir}.")
     all_inputs = {}
     all_labels = {}
     all_weights = {}
