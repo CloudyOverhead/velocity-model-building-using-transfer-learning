@@ -56,7 +56,7 @@ def main(args):
             dataset_train,
             args.logdir_2d,
             args.gpus,
-            None,
+            "Training",
         )
         launch_both_inferences(args, RCNN2D, dataset)
         launch_inference(
@@ -73,7 +73,6 @@ def main(args):
             args.gpus = 1
         launch_both_inferences(args, RCNN2DUnpackReal, dataset_real)
 
-    compare_preds(dataset_train, savedir="RCNN2D")
     compare_preds(dataset, savedir="Pretraining")
     compare_preds(dataset, savedir="NoTransferLearning")
     inputs, labels, weights, preds, similarities = compare_preds(
@@ -93,6 +92,7 @@ def main(args):
             figure_name=f"results_{percentile}th_percentile.pdf",
             plot=args.plot,
         )
+    compare_preds(dataset_train, savedir="Training")
         if percentile == 50:
             plot_no_transfer_learning(
                 dataset=dataset,
