@@ -41,6 +41,7 @@ def main(args):
 
     if not args.no_inference:
         params_1d = Hyperparameters1D(is_training=False)
+        params_1d.batch_size = 2
         params_2d = Hyperparameters2D(is_training=False)
         launch_inference(args, RCNN2D, dataset, params_1d, params_2d)
         print(
