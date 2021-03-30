@@ -68,7 +68,10 @@ def main(args):
             args, RCNN2DUnpackReal, dataset_real, params_1d, params_2d,
         )
 
-    inputs, labels, weights, preds, similarities = compare_preds(dataset)
+    compare_preds(dataset, savedir="Pretraining")
+    inputs, labels, weights, preds, similarities = compare_preds(
+        dataset, savedir="PostTraining",
+    )
 
     for percentile in [10, 50, 90]:
         score = np.percentile(
