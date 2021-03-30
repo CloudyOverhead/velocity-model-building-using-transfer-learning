@@ -127,7 +127,7 @@ def launch_both_inferences(args, nn, dataset):
 def launch_inference(nn, params, dataset, logdir, gpus, savedir):
         print("Launching inference.")
         print("NN:", nn)
-        print("Hyperparameters:", params)
+        print("Hyperparameters:", type(params).__name__)
         print("Weights:", logdir)
         print("Case:", savedir)
 
