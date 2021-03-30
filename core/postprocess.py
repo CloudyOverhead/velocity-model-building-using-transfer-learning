@@ -73,7 +73,7 @@ def main(args):
             args.gpus = 1
         launch_both_inferences(args, RCNN2DUnpackReal, dataset_real)
 
-    compare_preds(dataset, savedir="../train/RCNN2D")
+    compare_preds(dataset_train, savedir="RCNN2D")
     compare_preds(dataset, savedir="Pretraining")
     compare_preds(dataset, savedir="NoTransferLearning")
     inputs, labels, weights, preds, similarities = compare_preds(
