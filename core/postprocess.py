@@ -138,7 +138,7 @@ def launch_inference(nn, params, dataset, logdir, gpus, savedir):
             dataset=dataset,
             logdir=logdir,
             training=3,
-            gpus=args.gpus,
+            gpus=gpus,
             savedir=savedir,
             plot=False,
             debug=False,
