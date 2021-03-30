@@ -40,39 +40,25 @@ def main(args):
         makedirs(FIGURES_DIR)
 
     if not args.no_inference:
-        params_1d = Hyperparameters1D(is_training=False)
-        params_1d.batch_size = 2
-        params_2d = Hyperparameters2D(is_training=False)
-        launch_inference(args, RCNN2D, dataset, params_1d, params_2d)
-        print(
-            f"Launching 2D inference on dataset `{dataset.name}` without "
-            f"transfer learning."
+        launch_both_inferences(args, RCNN2D, dataset)
+        launch_inference(
+            RCNN2D,
+            Hyperparameters2DNoTL(is_training=False),
+            dataset,
+            args.logdir_2d_no_tl,
+            args.gpus,
+            "NoTransferLearning",
         )
-        args_no_tl = Namespace(
-            nn=RCNN2D,
-            params=Hyperparameters2DNoTL(is_training=False),
-            dataset=dataset,
-            logdir=args.logdir_2d_no_tl,
-            training=3,
-            gpus=args.gpus,
-            savedir="NoTL",
-            plot=False,
-            debug=False,
-            eager=False,
-        )
-        global_main(args_no_tl)
         if isinstance(args.gpus, list):
             args.gpus = [args.gpus[0]]
         else:
             args.gpus = 1
-        launch_inference(
-            args, RCNN2DUnpackReal, dataset_real, params_1d, params_2d,
-        )
+        launch_both_inferences(args, RCNN2DUnpackReal, dataset_real)
 
     compare_preds(dataset, savedir="Pretraining")
-    compare_preds(dataset, savedir="NoTL")
+    compare_preds(dataset, savedir="NoTransferLearning")
     inputs, labels, weights, preds, similarities = compare_preds(
-        dataset, savedir="PostTraining",
+        dataset, savedir="EndResults",
     )
 
     for percentile in [10, 50, 90]:
@@ -107,14 +93,25 @@ def main(args):
     )
 
 
-def launch_inference(args, nn, dataset, params_1d, params_2d):
-    for case, logdir, savedir, params in zip(
-        ["1D", "2D"],
+def launch_both_inferences(args, nn, dataset):
+    params_1d = Hyperparameters1D(is_training=False)
+    params_1d.batch_size = 2
+    params_2d = Hyperparameters2D(is_training=False)
+    for logdir, savedir, params in zip(
         [args.logdir_1d, args.logdir_2d],
-        ["Pretraining", "PostTraining"],
-        [params_1d, params_2d]
+        ["Pretraining", "EndResults"],
+        [params_1d, params_2d],
     ):
-        print(f"Launching {case} inference on dataset `{dataset.name}`.")
+        launch_inference(nn, params, dataset, logdir, args.gpus, savedir)
+
+
+def launch_inference(nn, params, dataset, logdir, gpus, savedir):
+        print("Launching inference.")
+        print("NN:", nn)
+        print("Hyperparameters:", params)
+        print("Weights:", logdir)
+        print("Case:", savedir)
+
         current_args = Namespace(
             nn=nn,
             params=params,
