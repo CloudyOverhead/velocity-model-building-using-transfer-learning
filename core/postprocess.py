@@ -40,8 +40,9 @@ def main(args):
         makedirs(FIGURES_DIR)
 
     if not args.no_inference:
-        params = Hyperparameters2D(is_training=False)
-        launch_inference(args, RCNN2D, dataset, params)
+        params_1d = Hyperparameters1D(is_training=False)
+        params_2d = Hyperparameters2D(is_training=False)
+        launch_inference(args, RCNN2D, dataset, params_1d, params_2d)
         print(
             f"Launching 2D inference on dataset `{dataset.name}` without "
             f"transfer learning."
@@ -63,7 +64,9 @@ def main(args):
             args.gpus = [args.gpus[0]]
         else:
             args.gpus = 1
-        launch_inference(args, RCNN2DUnpackReal, dataset_real, params)
+        launch_inference(
+            args, RCNN2DUnpackReal, dataset_real, params_1d, params_2d,
+        )
 
     inputs, labels, weights, preds, similarities = compare_preds(dataset)
 
@@ -99,11 +102,12 @@ def main(args):
     )
 
 
-def launch_inference(args, nn, dataset, params):
-    for case, logdir, savedir in zip(
+def launch_inference(args, nn, dataset, params_1d, params_2d):
+    for case, logdir, savedir, params in zip(
         ["1D", "2D"],
         [args.logdir_1d, args.logdir_2d],
         ["Pretraining", "PostTraining"],
+        [params_1d, params_2]
     ):
         print(f"Launching {case} inference on dataset `{dataset.name}`.")
         current_args = Namespace(
