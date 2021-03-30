@@ -26,7 +26,13 @@ TOINPUTS = ['shotgather']
 TOOUTPUTS = ['ref', 'vrms', 'vint', 'vdepth']
 
 plt.rcParams.update(
-    {'font.size': 8, 'figure.figsize': [4.33, 2.5], 'figure.dpi': 1200}
+    {
+        'font.size': 8,
+        'axes.titlesize': 8,
+        'axes.titlepad': 4,
+        'figure.figsize': [4.33, 2.5],
+        'figure.dpi': 1200,
+    }
 )
 
 
@@ -188,7 +194,7 @@ def plot_example(args, dataset, filename, figure_name, plot=True):
 
     pretrained = dataset.generator.read_predictions(filename, "Pretraining")
     pretrained = {name: pretrained[name] for name in TOOUTPUTS}
-    preds = dataset.generator.read_predictions(filename, "PostTraining")
+    preds = dataset.generator.read_predictions(filename, "EndResults")
     preds = {name: preds[name] for name in TOOUTPUTS}
     cols = [inputs, pretrained, preds, labels]
 
@@ -269,6 +275,7 @@ def plot_example(args, dataset, filename, figure_name, plot=True):
     axs[0].images[0].set_extent(
         [rec_pos[0].min()/1000, rec_pos[0].max()/1000, time.max(), time.min()]
     )
+    axs[0].invert_xaxis()
     for ax in axs[1:]:
         ax.images[0].set_extent(
             [cmps.min(), cmps.max(), time.max(), time.min()]
@@ -300,7 +307,7 @@ def plot_example(args, dataset, filename, figure_name, plot=True):
     vmax += .05 * diff
     TO_SLICE = ['vrms', 'vint', 'vdepth']
     START_AX_IDX = [3, 4, 5]
-    LINE_LABELS = ["Pretraining", "End estimate", "Expected"]
+    LINE_LABELS = ["Pretraining", "End estimate", "Ground truth"]
     ZORDERS = [2, 3, 1]
     line_axs = []
     for i, (label_name, start_idx) in enumerate(zip(TO_SLICE, START_AX_IDX)):
@@ -349,8 +356,8 @@ def plot_example(args, dataset, filename, figure_name, plot=True):
     gs.update(wspace=.15, hspace=.2)
     for ax in axs[:2]:
         box = ax.get_position()
-        box.y0 += .06
-        box.y1 += .06
+        box.y0 += .05
+        box.y1 += .05
         ax.set_position(box)
     TITLES = {
         'ref': "Primaries",
@@ -383,7 +390,7 @@ def plot_example(args, dataset, filename, figure_name, plot=True):
         axs[2+(i+1)*(NROWS-1)-1].set_xlabel("$x$ (km)")
     axs[2].set_title("Pretraining")
     axs[2+NROWS-1].set_title("End estimate")
-    axs[2+2*(NROWS-1)].set_title("Expected")
+    axs[2+2*(NROWS-1)].set_title("Ground truth")
 
     position = gs[1, 7].get_position(fig)
     left, bottom, width, height = position.bounds
