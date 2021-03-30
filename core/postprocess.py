@@ -70,6 +70,7 @@ def main(args):
         )
 
     compare_preds(dataset, savedir="Pretraining")
+    compare_preds(dataset, savedir="NoTL")
     inputs, labels, weights, preds, similarities = compare_preds(
         dataset, savedir="PostTraining",
     )
