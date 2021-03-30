@@ -94,8 +94,9 @@ def main(args):
             plot=args.plot,
         )
         if percentile == 50:
-            plot_transfer_learning(
-                plot_idx=idx,
+            plot_no_transfer_learning(
+                dataset=dataset,
+                filename=dataset.files["test"][idx],
                 plot=args.plot,
             )
     plot_losses(
@@ -437,9 +438,95 @@ def plot_example(args, dataset, filename, figure_name, plot=True):
         plt.clf()
 
 
-def plot_transfer_learning(plot_idx, plot=True):
+def plot_no_transfer_learning(dataset, filename, plot=True):
+    inputs, labels, weights, filename = dataset.get_example(
+        filename=filename,
+        phase='test',
+        toinputs=[],
+        tooutputs=['ref', 'vint'],
+    )
+    preds = dataset.generator.read_predictions(
+        filename, "EndResults", tooutputs=['vint'],
+    )
+    preds_no_tl = dataset.generator.read_predictions(
+        filename, "NoTransferLearning", tooutputs=['vint'],
+    )
+    cols = [preds, preds_no_tl, labels]
+
+    ref = labels['ref']
+    crop_top = int(np.nonzero(ref.astype(bool).any(axis=1))[0][0] * .95)
+    for col in [*cols, weights]:
+        for row_name, row in col.items():
+            col[row_name] = row[crop_top:]
+
+    dt = dataset.acquire.dt * dataset.acquire.resampling
+    tdelay = dataset.acquire.tdelay
+    start_time = crop_top*dt - tdelay
+    time = np.arange(len(labels['ref']))*dt + start_time
+
+    src_pos, rec_pos = dataset.acquire.set_rec_src()
+    _, cmps = sortcmp(None, src_pos, rec_pos)
+    cmps /= 1000
+
+    fig, axs = plt.subplots(
+        ncols=2,
+        nrows=3,
+        figsize=[3.33, 6.5],
+        constrained_layout=False,
+        gridspec_kw={'width_ratios': [95, 5]},
+    )
+    for ax in axs[1:, 1]:
+        ax.remove()
+    cax = axs[0, 1]
+    axs = axs[:, 0]
+
+    meta = dataset.outputs['vint']
+    for ax, output in zip(axs, cols):
+        data = output['vint']
+        data = meta.postprocess(data)
+        meta.plot(data, axs=[ax], ims=[None])
+
+    for ax in axs:
+        ax.images[0].set_extent(
+            [cmps.min(), cmps.max(), time.max(), time.min()]
+        )
+    for ax in axs:
+        ax.tick_params(which='minor', length=2)
+        ax.minorticks_on()
+
+    for ax in axs:
+        ax.set_title("")
+        if ax.images:
+            cbar = ax.images[-1].colorbar
+            if cbar is not None:
+                cbar.remove()
+
+    vmin, vmax = dataset.model.properties['vp']
+    diff = vmax - vmin
+    vmin -= .05 * diff
+    vmax += .05 * diff
+
+    axs[-1].set_xlabel("$x$ (km)")
+    for ax in axs[:-1]:
+        ax.set_xticklabels([])
+    for ax in axs:
+        ax.set_ylabel("$t$ (s)")
+
+    cbar = plt.colorbar(axs[0].images[0], cax=cax)
+    cbar.ax.set_ylabel("Velocity (km/s)")
+    cbar.set_ticks(range(2000, 5000, 1000))
+    cbar.set_ticklabels(range(2, 5, 1))
+
+    for ax, letter in zip(axs, range(ord('a'), ord('c')+1)):
+        letter = f"({chr(letter)})"
+        plt.sca(ax)
+        x0, _ = plt.xlim()
+        y1, y0 = plt.ylim()
+        height = y1 - y0
+        plt.text(x0, y0-.02*height, letter, va='bottom')
+
     plt.savefig(
-        join(FIGURES_DIR, "transfer_learning.pdf"), bbox_inches="tight",
+        join(FIGURES_DIR, "no_transfer_learning.pdf"), bbox_inches="tight",
     )
     if plot:
         plt.gcf().set_dpi(200)
