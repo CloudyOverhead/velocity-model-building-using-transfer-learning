@@ -26,6 +26,7 @@ REQUIREMENTS = [
         version="57b425ae46fc1343fab06cb03fe0e11175922bf1",
     ),
     "scikit-image",
+    "segyio",
 ]
 
 setup(
