@@ -39,6 +39,10 @@ plt.rcParams.update(
 def main(args):
     dataset = Article2D()
     dataset._getfilelist()
+    dataset_train = Article2D()
+    dataset_train.testsize = dataset_train.trainsize
+    dataset_train.datatest = dataset_train.datatrain
+    dataset_train._getfilelist()
     dataset_real = USGS()
     dataset_real._getfilelist()
 
@@ -46,6 +50,14 @@ def main(args):
         makedirs(FIGURES_DIR)
 
     if not args.no_inference:
+        launch_inference(
+            RCNN2D,
+            Hyperparameters2DNoTL(is_training=False),
+            dataset_train,
+            args.logdir_2d_no_tl,
+            args.gpus,
+            None,
+        )
         launch_both_inferences(args, RCNN2D, dataset)
         launch_inference(
             RCNN2D,
@@ -61,6 +73,7 @@ def main(args):
             args.gpus = 1
         launch_both_inferences(args, RCNN2DUnpackReal, dataset_real)
 
+    compare_preds(dataset, savedir="../train/RCNN2D")
     compare_preds(dataset, savedir="Pretraining")
     compare_preds(dataset, savedir="NoTransferLearning")
     inputs, labels, weights, preds, similarities = compare_preds(
