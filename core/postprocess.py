@@ -739,7 +739,6 @@ def stack_2d(cmps, times, offsets, velocities):
     cmps = cmps.transpose([2, 0, 1])
     velocities = velocities.T
     for i, (cmp, velocities_1d) in enumerate(zip(cmps, velocities)):
-        print(f"Stacking gather {i+1} out of {len(cmps)}.")
         stacked.append(stack(cmp, times, offsets, velocities_1d))
     stacked = np.array(stacked).T
     return stacked
