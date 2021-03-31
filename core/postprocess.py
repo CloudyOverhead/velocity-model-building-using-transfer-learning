@@ -631,12 +631,10 @@ def plot_real_data(args, dataset, plot=True):
 
     src_pos, rec_pos = dataset.acquire.set_rec_src()
     datacmp, cmps = sortcmp(shotgather, src_pos, rec_pos)
-    datacmp = datacmp[:, :, :10]
-    cmps = cmps[:10]
     pretrained = dataset.generator.read_predictions(filename, "Pretraining")
-    pretrained = {name: pretrained[name][:, :10] for name in TOOUTPUTS}
+    pretrained = {name: pretrained[name] for name in TOOUTPUTS}
     preds = dataset.generator.read_predictions(filename, "EndResults")
-    preds = {name: preds[name][:, :10] for name in TOOUTPUTS}
+    preds = {name: preds[name] for name in TOOUTPUTS}
 
     stacked_filepath = join(dataset.basepath, dataset.name, "CSDS32_1.SGY")
     with segyio.open(stacked_filepath, "r", ignore_geometry=True) as segy:
@@ -645,7 +643,6 @@ def plot_real_data(args, dataset, plot=True):
         stacked_usgs = stacked_usgs.T
     stacked_usgs = stacked_usgs[:, -2401:-160]
     stacked_usgs = stacked_usgs[:, ::-1]
-    stacked_usgs = stacked_usgs[:, :10]
     stacked_usgs = np.expand_dims(stacked_usgs, axis=-1)
 
     resampling = dataset.acquire.resampling
@@ -655,25 +652,25 @@ def plot_real_data(args, dataset, plot=True):
     times = np.arange(nt//resampling)*dt - tdelay
     offsets = np.arange(
         dataset.acquire.gmin, dataset.acquire.gmax, dataset.acquire.dg,
-    )[:10]
+    )
 
     print("Stacking 1D case.")
     pretrained_vint = vint_meta.postprocess(pretrained['vint'])
-    pretrained_stacked = stack_2d(datacmp, times, offsets, pretrained['vrms'])
+    pretrained_vrms = vint_meta.postprocess(preds['vrms'])
+    pretrained_stacked = stack_2d(datacmp, times, offsets, pretrained_vrms)
     pretrained_stacked = np.expand_dims(pretrained_stacked, axis=-1)
     print("Stacking 2D case.")
     pred_vint = vint_meta.postprocess(preds['vint'])
-    pred_stacked = stack_2d(datacmp, times, offsets, preds['vrms'])
+    pred_vrms = vint_meta.postprocess(preds['vrms'])
+    pred_stacked = stack_2d(datacmp, times, offsets, pred_vrms)
     pred_stacked = np.expand_dims(pred_stacked, axis=-1)
-    plt.imshow(pretrained_stacked, aspect='auto')
-    plt.show()
 
     fig, axs = plt.subplots(
         ncols=2,
         nrows=5,
         figsize=[4.33, 7],
         constrained_layout=False,
-        gridspec_kw={"width_ratios": [95, 5], "hspace": .25},
+        gridspec_kw={"width_ratios": [95, 5], "hspace": .3},
     )
     for ax in axs[1:, 1]:
         ax.remove()
