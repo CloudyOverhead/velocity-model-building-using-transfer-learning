@@ -693,7 +693,7 @@ def plot_real_data(args, dataset, plot=True):
     data_meta.plot(pretrained_stacked[crop_top:crop_bottom], axs=[axs[1]])
     vint_meta.plot(pred_vint[crop_top:crop_bottom], axs=[axs[2]])
     data_meta.plot(pred_stacked[crop_top:crop_bottom], axs=[axs[3]])
-    data_meta.plot(stacked_usgs[:crop_bottom], axs=[axs[4]])
+    data_meta.plot(stacked_usgs[crop_top:crop_bottom], axs=[axs[4]], clip=1E-7)
 
     extent = [cmps.min()/1000, cmps.max()/1000, END_TIME, start_time]
 
