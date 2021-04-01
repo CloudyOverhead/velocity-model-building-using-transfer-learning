@@ -695,7 +695,7 @@ def plot_real_data(args, dataset, plot=True):
     data_meta.plot(pred_stacked[crop_top:crop_bottom], axs=[axs[3]])
     data_meta.plot(stacked_usgs[:crop_bottom], axs=[axs[4]])
 
-    extent = [cmps.min(), cmps.max(), END_TIME, start_time]
+    extent = [cmps.min()/1000, cmps.max()/1000, END_TIME, start_time]
 
     for i, ax in enumerate(axs):
         ax.images[0].set_extent(extent)
@@ -709,6 +709,10 @@ def plot_real_data(args, dataset, plot=True):
 
     for ax in axs[:-1]:
         ax.set_xticklabels([])
+
+    for ax in axs:
+        ax.tick_params(which='minor', length=2)
+        ax.minorticks_on()
 
     plt.xlabel("$x$ (km)")
     for ax in axs:
