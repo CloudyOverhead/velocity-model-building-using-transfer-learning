@@ -643,6 +643,7 @@ def plot_real_data(args, dataset, plot=True):
         stacked_usgs = stacked_usgs.T
     stacked_usgs = stacked_usgs[:, -2401:-160]
     stacked_usgs = stacked_usgs[:, ::-1]
+    stacked_usgs[(np.abs(stacked_usgs) > 1E10).any(axis=1)] = 0
     stacked_usgs = np.expand_dims(stacked_usgs, axis=-1)
 
     resampling = dataset.acquire.resampling
