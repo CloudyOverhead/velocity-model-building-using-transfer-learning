@@ -119,6 +119,7 @@ class USGS(Article2D):
         model.NX = NS*acquire.ds + acquire.gmax + 2*acquire.Npad
 
         acquire.NT = 3071 * acquire.resampling
+        acquire.tdelay *= 1.5
 
         for name in inputs:
             inputs[name].mute_dir = False
