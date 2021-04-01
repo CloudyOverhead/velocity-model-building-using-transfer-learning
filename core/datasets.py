@@ -8,6 +8,8 @@ from GeoFlow.EarthModel import MarineModel
 from GeoFlow.SeismicGenerator import Acquisition
 from GeoFlow.GraphIO import Reftime, Vrms, Vint, Vdepth, ShotGather
 
+from core.download_real_test_data import NS
+
 
 class Dataset(GeoDataset):
     basepath = abspath("datasets")
@@ -115,7 +117,6 @@ class USGS(Article2D):
         self.validatesize = 0
         self.testsize = 1
 
-        NS = 964
         model.NX = NS*acquire.ds + acquire.gmax + 2*acquire.Npad
 
         acquire.NT = 3071 * acquire.resampling
