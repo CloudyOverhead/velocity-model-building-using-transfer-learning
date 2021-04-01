@@ -154,6 +154,4 @@ class Hyperparameters2DNoTL(Hyperparameters2D):
 
         self.epochs *= 2
 
-        self.learning_rate = 8E-4
-
         self.restore_from = None
