@@ -76,7 +76,7 @@ class RCNN2DUnpackReal(RCNN2D):
 
 def split_data(data):
     qty_cmps = data.shape[2]
-    start_idx = tf.range(0, qty_cmps-CMPS_PER_ITER+RF//2, DBATCH)
+    start_idx = tf.range(0, qty_cmps-CMPS_PER_ITER+2*(RF//2), DBATCH)
     batch_idx = tf.range(CMPS_PER_ITER)
     select_idx = (
         tf.expand_dims(start_idx, 0) + tf.expand_dims(batch_idx, 1)
