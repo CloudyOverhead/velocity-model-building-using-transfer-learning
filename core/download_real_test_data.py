@@ -46,7 +46,7 @@ import scipy.ndimage as ndimage
 
 # From the observer log, we get the acquisition parameters:
 NT = 3071
-NS = 964
+NS = 2182
 DS = 50  # Shot point spacing.
 DG1 = 100  # Geophone spacing for channels 1-24.
 DG2 = 50  # Geophone spacing for channels 25-48.
@@ -65,7 +65,7 @@ def download_data(save_dir):
         "report.pdf": "https://pubs.usgs.gov/of/1995/0027/report.pdf",
         "CSDS32_1.SGY": urljoin(PREFIX, "SE/001/39/CSDS32_1.SGY"),
     }
-    dfiles = [f"U32A_{i:02d}.SGY" for i in range(1, 22)]
+    dfiles = [f"U32A_{i:02d}.SGY" for i in range(1, 10)]
 
     if not isdir(save_dir):
         makedirs(save_dir)
@@ -148,6 +148,8 @@ def preprocess(data, fid, cid):
         if fldr < prev_fldr:
             fldr_bias += 1000
 
+        prev_fldr = fldr
+
         fldr += fldr_bias
         if fldr not in NOT_SHOTS:
             shot[ii] = 6102 - fldr
@@ -168,8 +170,6 @@ def preprocess(data, fid, cid):
             delrt[ii] = 1000
         else:
             delrt[ii] = 0
-
-        prev_fldr = fldr
 
     valid = shot > 0
     delrt = delrt[valid]
