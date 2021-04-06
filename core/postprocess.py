@@ -628,6 +628,7 @@ def plot_real_data(args, dataset, plot=True):
     data_meta.acquire.singleshot = True
     vint_meta = dataset.outputs['vint']
     shotgather = inputs['shotgather']
+    shotgather = data_preprocess(shotgather)
 
     src_pos, rec_pos = dataset.acquire.set_rec_src()
     datacmp, cmps = sortcmp(shotgather, src_pos, rec_pos)
@@ -643,7 +644,7 @@ def plot_real_data(args, dataset, plot=True):
         stacked_usgs = stacked_usgs.T
     stacked_usgs = stacked_usgs[:, -2401:-160]
     stacked_usgs = stacked_usgs[:, ::-1]
-    stacked_usgs[(np.abs(stacked_usgs) > 1E10).any(axis=1)] = 0
+    stacked_usgs = data_preprocess(stacked_usgs)
     stacked_usgs = np.expand_dims(stacked_usgs, axis=-1)
 
     resampling = dataset.acquire.resampling
@@ -657,7 +658,7 @@ def plot_real_data(args, dataset, plot=True):
 
     print("Stacking 1D case.")
     pretrained_vint = vint_meta.postprocess(pretrained['vint'])
-    pretrained_vrms = vint_meta.postprocess(preds['vrms'])
+    pretrained_vrms = vint_meta.postprocess(pretrained['vrms'])
     pretrained_stacked = stack_2d(datacmp, times, offsets, pretrained_vrms)
     pretrained_stacked = np.expand_dims(pretrained_stacked, axis=-1)
     print("Stacking 2D case.")
@@ -681,10 +682,8 @@ def plot_real_data(args, dataset, plot=True):
     for shared_axes in [cax.get_shared_x_axes(), cax.get_shared_y_axes()]:
         shared_axes.remove(cax)
 
-    ref = preds['ref'] > .5
+    ref = preds['ref'] > .1
     crop_top = int(np.nonzero(ref.any(axis=1))[0][0] * .95)
-    dt = dataset.acquire.dt * dataset.acquire.resampling
-    tdelay = dataset.acquire.tdelay
     start_time = crop_top*dt - tdelay
     END_TIME = 10
     crop_bottom = int((END_TIME+tdelay) / dt)
@@ -737,6 +736,13 @@ def plot_real_data(args, dataset, plot=True):
         plt.show()
     else:
         plt.clf()
+
+
+def data_preprocess(data):
+    eps = np.finfo(np.float32).eps
+    trace_rms = np.sqrt(np.sum(data**2, axis=0, keepdims=True))
+    data /= trace_rms + eps
+    return data
 
 
 def stack_2d(cmps, times, offsets, velocities):
