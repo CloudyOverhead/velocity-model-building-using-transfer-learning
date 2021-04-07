@@ -8,16 +8,10 @@ import numpy as np
 import tensorflow as tf
 from DefinedNN.RCNN2D import RCNN2D, Hyperparameters
 
-RF = 31  # Receptive field.
-CMPS_PER_ITER = 2*RF - 1
-DBATCH = CMPS_PER_ITER - 2*(RF//2)
-
-
-class RCNN2D(RCNN2D):
-    pass
-
 
 class RCNN2DUnpackReal(RCNN2D):
+    receptive_field = 31
+
     def __init__(
         self, input_shapes, params, dataset, checkpoint_dir, devices,
         run_eagerly,
@@ -26,12 +20,20 @@ class RCNN2DUnpackReal(RCNN2D):
         ng = int(ng)
         nt = dataset.acquire.NT // dataset.acquire.resampling
         nt = int(nt)
-        input_shapes = {'shotgather': (nt, ng, CMPS_PER_ITER, 1)}
+        input_shapes = {'shotgather': (nt, ng, self.cmps_per_iter, 1)}
         params.batch_size = 1
         super().__init__(
             input_shapes, params, dataset, checkpoint_dir, devices,
             run_eagerly,
         )
+
+    @property
+    def cmps_per_iter(self):
+        return 2*self.receptive_field - 1
+
+    @property
+    def dbatch(self):
+        return self.cmps_per_iter - 2*(self.receptive_field//2)
 
     def launch_testing(self, tfdataset, savedir):
         if savedir is None:
@@ -45,7 +47,7 @@ class RCNN2DUnpackReal(RCNN2D):
             shotgather = data['shotgather'][0]
             filename = data['filename'][0]
             qty_cmps = shotgather.shape[2]
-            shotgather = split_data(shotgather)
+            shotgather = self.split_data(shotgather)
             for i, slice in enumerate(shotgather):
                 print(f"Processing slice {i+1} out of {len(shotgather)}.")
                 evaluated_slice = self.predict(
@@ -60,7 +62,7 @@ class RCNN2DUnpackReal(RCNN2D):
                 for key, pred in evaluated_slice.items():
                     evaluated[key].append(pred[0])
             print("Joining slices.")
-            evaluated = unsplit_predictions(evaluated, qty_cmps)
+            evaluated = self.unsplit_predictions(evaluated, qty_cmps)
             for lbl, out in evaluated.items():
                 evaluated[lbl] = out[..., 0]
 
@@ -73,35 +75,40 @@ class RCNN2DUnpackReal(RCNN2D):
                 exampleid, savedir, example_evaluated,
             )
 
+    def split_data(self, data):
+        rf = self.receptive_field
+        cmps_per_iter = self.cmps_per_iter
+        dbatch = self.dbatch
 
-def split_data(data):
-    qty_cmps = data.shape[2]
-    start_idx = np.arange(0, qty_cmps-CMPS_PER_ITER+2*(RF//2), DBATCH)
-    batch_idx = np.arange(CMPS_PER_ITER)
-    select_idx = (
-        np.expand_dims(start_idx, 0) + np.expand_dims(batch_idx, 1)
-    )
-    qty_batches = len(start_idx)
-    end_pad = DBATCH*qty_batches + 2*(RF//2) - qty_cmps
-    data = np.pad(data, [[0, 0], [0, 0], [0, end_pad], [0, 0]])
-    data = np.take(data, select_idx, axis=2)
-    data = np.transpose(data, [3, 0, 1, 2, 4])
-    return data
+        qty_cmps = data.shape[2]
+        start_idx = np.arange(0, qty_cmps-cmps_per_iter+2*(rf//2), dbatch)
+        batch_idx = np.arange(cmps_per_iter)
+        select_idx = (
+            np.expand_dims(start_idx, 0) + np.expand_dims(batch_idx, 1)
+        )
+        qty_batches = len(start_idx)
+        end_pad = dbatch*qty_batches + 2*(rf//2) - qty_cmps
+        data = np.pad(data, [[0, 0], [0, 0], [0, end_pad], [0, 0]])
+        data = np.take(data, select_idx, axis=2)
+        data = np.transpose(data, [3, 0, 1, 2, 4])
+        return data
 
+    def unsplit_predictions(self, predictions, qty_cmps):
+        rf = self.receptive_field
+        dbatch = self.dbatch
 
-def unsplit_predictions(predictions, qty_cmps):
-    for key, pred in predictions.items():
-        for i, slice in enumerate(pred):
-            if i == 0:
-                pred[i] = slice[:, :-(RF//2)]
-            elif i != len(pred)-1:
-                pred[i] = slice[:, RF//2:-(RF//2)]
-            else:
-                unpad_end = DBATCH*len(pred) + 2*(RF//2) - qty_cmps
-                pred[i] = slice[:, RF//2:-unpad_end]
-    for key, pred in predictions.items():
-        predictions[key] = np.concatenate(pred, axis=1)
-    return predictions
+        for key, pred in predictions.items():
+            for i, slice in enumerate(pred):
+                if i == 0:
+                    pred[i] = slice[:, :-(rf//2)]
+                elif i != len(pred)-1:
+                    pred[i] = slice[:, rf//2:-(rf//2)]
+                else:
+                    unpad_end = dbatch*len(pred) + 2*(rf//2) - qty_cmps
+                    pred[i] = slice[:, rf//2:-unpad_end]
+        for key, pred in predictions.items():
+            predictions[key] = np.concatenate(pred, axis=1)
+        return predictions
 
 
 class Hyperparameters1D(Hyperparameters):
