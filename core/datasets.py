@@ -142,6 +142,8 @@ def decorate_preprocess(self):
             END_CMP = 2100
             data = data[:, :, :END_CMP]
 
+            resampling = self.acquire.resampling
+            dt = self.acquire.dt * resampling
             data = bandpass(data, 10, 35, 1/dt, axis=0, order=3)
             return data
         else:
