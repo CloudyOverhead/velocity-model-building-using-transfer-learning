@@ -126,25 +126,25 @@ def launch_both_inferences(args, nn, dataset):
 
 
 def launch_inference(nn, params, dataset, logdir, gpus, savedir):
-        print("Launching inference.")
-        print("NN:", nn.__name__)
-        print("Hyperparameters:", type(params).__name__)
-        print("Weights:", logdir)
-        print("Case:", savedir)
+    print("Launching inference.")
+    print("NN:", nn.__name__)
+    print("Hyperparameters:", type(params).__name__)
+    print("Weights:", logdir)
+    print("Case:", savedir)
 
-        current_args = Namespace(
-            nn=nn,
-            params=params,
-            dataset=dataset,
-            logdir=logdir,
-            training=3,
-            gpus=gpus,
-            savedir=savedir,
-            plot=False,
-            debug=False,
-            eager=False,
-        )
-        global_main(current_args)
+    current_args = Namespace(
+        nn=nn,
+        params=params,
+        dataset=dataset,
+        logdir=logdir,
+        training=3,
+        gpus=gpus,
+        savedir=savedir,
+        plot=False,
+        debug=False,
+        eager=False,
+    )
+    global_main(current_args)
 
 
 def compare_preds(dataset, savedir):
