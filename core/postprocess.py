@@ -691,11 +691,15 @@ def plot_real_data(args, dataset, plot=True):
     pretrained_vint = pretrained_vint[crop_top:crop_bottom]
     pretrained_stacked = pretrained_stacked[crop_top:crop_bottom]
     pred_vint = pred_vint[crop_top:crop_bottom]
-    pred_stacked = pred_vint[crop_top:crop_bottom]
+    pred_stacked = pred_stacked[crop_top:crop_bottom]
     stacked_usgs = stacked_usgs[crop_top:crop_bottom]
-    vint_meta.plot(pretrained_vint, axs=[axs[0]], cmap='jet')
+    vint_meta.plot(
+        pretrained_vint, axs=[axs[0]], vmin=1400, vmax=3100, cmap='jet',
+    )
     data_meta.plot(pretrained_stacked, axs=[axs[1]], clip=1E-2)
-    vint_meta.plot(pred_vint, axs=[axs[2]], cmap='jet')
+    vint_meta.plot(
+        pred_vint, axs=[axs[2]], vmin=1400, vmax=3100, cmap='jet',
+    )
     data_meta.plot(pred_stacked, axs=[axs[3]], clip=1E-2)
     data_meta.plot(stacked_usgs, axs=[axs[4]], clip=1E-7)
 
