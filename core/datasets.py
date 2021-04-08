@@ -139,13 +139,8 @@ def decorate_preprocess(self):
         if not self.skip_preprocess:
             data = type(self).preprocess(self, data, labels)
 
-            resampling = self.acquire.resampling
-            dt = self.acquire.dt * resampling
-            tdelay = self.acquire.tdelay
-            END_TIME = 10
-            crop_bottom = int((END_TIME+tdelay) / dt)
             END_CMP = 2100
-            data = data[:crop_bottom, :, :END_CMP]
+            data = data[:, :, :END_CMP]
 
             data = bandpass(data, 10, 35, 1/dt, axis=0, order=3)
             return data
