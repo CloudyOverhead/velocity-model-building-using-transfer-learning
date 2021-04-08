@@ -10,8 +10,6 @@ from DefinedNN.RCNN2D import RCNN2D, Hyperparameters
 
 
 class RCNN2DUnpackReal(RCNN2D):
-    receptive_field = 31
-
     def __init__(
         self, input_shapes, params, dataset, checkpoint_dir, devices,
         run_eagerly,
@@ -20,16 +18,21 @@ class RCNN2DUnpackReal(RCNN2D):
         ng = int(ng)
         nt = dataset.acquire.NT // dataset.acquire.resampling
         nt = int(nt)
+
+        is_1d = "1D" in type(params).__name__
+        if is_1d:
+            self.receptive_field = 1
+            self.cmps_per_iter = 61
+        else:
+            self.receptive_field = 31
+            self.cmps_per_iter = 2*self.receptive_field - 1
+
         input_shapes = {'shotgather': (nt, ng, self.cmps_per_iter, 1)}
         params.batch_size = 1
         super().__init__(
             input_shapes, params, dataset, checkpoint_dir, devices,
             run_eagerly,
         )
-
-    @property
-    def cmps_per_iter(self):
-        return 2*self.receptive_field - 1
 
     @property
     def dbatch(self):
@@ -81,7 +84,7 @@ class RCNN2DUnpackReal(RCNN2D):
         dbatch = self.dbatch
 
         qty_cmps = data.shape[2]
-        start_idx = np.arange(0, qty_cmps-cmps_per_iter+2*(rf//2), dbatch)
+        start_idx = np.arange(0, qty_cmps-rf//2, dbatch)
         batch_idx = np.arange(cmps_per_iter)
         select_idx = (
             np.expand_dims(start_idx, 0) + np.expand_dims(batch_idx, 1)
