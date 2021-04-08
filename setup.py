@@ -27,6 +27,7 @@ REQUIREMENTS = [
     ),
     "scikit-image",
     "segyio",
+    "scipy",
 ]
 
 setup(

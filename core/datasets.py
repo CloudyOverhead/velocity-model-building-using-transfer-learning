@@ -3,6 +3,7 @@
 
 from os.path import abspath
 
+from scipy.signal import butter, filtfilt
 from GeoFlow.GeoDataset import GeoDataset
 from GeoFlow.EarthModel import MarineModel
 from GeoFlow.SeismicGenerator import Acquisition
@@ -123,5 +124,44 @@ class USGS(Article2D):
 
         for name in inputs:
             inputs[name].mute_dir = False
+            inputs[name].preprocess = decorate_preprocess(inputs[name])
 
         return model, acquire, inputs, outputs
+
+
+def decorate_preprocess(self):
+    # Preprocessing is costly, but it is run once in order to initialize the
+    # NN. We can skip the first preprocess, because we can infer the shapes
+    # manually.
+    self.skip_preprocess = True
+
+    def preprocess_real_data(data, labels):
+        if not self.skip_preprocess:
+            data = type(self).preprocess(self, data, labels)
+
+            resampling = self.acquire.resampling
+            dt = self.acquire.dt * resampling
+            tdelay = self.acquire.tdelay
+            END_TIME = 10
+            crop_bottom = int((END_TIME+tdelay) / dt)
+            END_CMP = 2100
+            data = data[:crop_bottom, :, :END_CMP]
+
+            data = bandpass(data, 10, 35, 1/dt, axis=0, order=3)
+            return data
+        else:
+            self.skip_preprocess = False
+            return data
+    return preprocess_real_data
+
+
+def butterworth(lowcut, highcut, fs, order=5):
+    nyq = .5 * fs
+    lowcut /= nyq
+    highcut /= nyq
+    return butter(order, [lowcut, highcut], btype='band', analog=False)
+
+
+def bandpass(data, lowcut, highcut, fs, order=5, axis=-1):
+    b, a = butterworth(lowcut, highcut, fs, order=order)
+    return filtfilt(b, a, data, axis=axis)
