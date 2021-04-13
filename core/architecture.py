@@ -100,15 +100,19 @@ class RCNN2DUnpackReal(RCNN2D):
         rf = self.receptive_field
         dbatch = self.dbatch
 
+        is_1d = "1D" in type(self.params).__name__
         for key, pred in predictions.items():
-            for i, slice in enumerate(pred):
-                if i == 0:
-                    pred[i] = slice[:, :-(rf//2)]
-                elif i != len(pred)-1:
-                    pred[i] = slice[:, rf//2:-(rf//2)]
-                else:
-                    unpad_end = dbatch*len(pred) + 2*(rf//2) - qty_cmps
-                    pred[i] = slice[:, rf//2:-unpad_end]
+            if not is_1d:
+                for i, slice in enumerate(pred):
+                    if i == 0:
+                        pred[i] = slice[:, :-(rf//2)]
+                    elif i != len(pred) - 1:
+                        pred[i] = slice[:, rf//2:-(rf//2)]
+            unpad_end = dbatch*len(pred) + 2*(rf//2) - qty_cmps
+            if unpad_end:
+                pred[-1] = pred[-1][:, rf//2:-unpad_end]
+            else:
+                pred[-1] = pred[-1][:, rf//2:]
         for key, pred in predictions.items():
             predictions[key] = np.concatenate(pred, axis=1)
         return predictions
