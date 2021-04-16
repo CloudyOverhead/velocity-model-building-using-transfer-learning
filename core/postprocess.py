@@ -9,6 +9,8 @@ import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 from matplotlib.patches import Rectangle
+from matplotlib.colors import LinearSegmentedColormap
+from matplotlib.cm import register_cmap
 from skimage.metrics import structural_similarity as ssim
 from tensorflow.compat.v1.train import summary_iterator
 from GeoFlow.SeismicUtilities import sortcmp, stack
@@ -25,15 +27,30 @@ FIGURES_DIR = "figures"
 TOINPUTS = ['shotgather']
 TOOUTPUTS = ['ref', 'vrms', 'vint', 'vdepth']
 
+WHITE = np.array([232, 232, 234]) / 255
+GREY = np.array([138, 138, 151]) / 255
+BLACK = np.array([20, 22, 47]) / 255
+TRANSPARENT_WHITE = np.array([*WHITE, .1])
 plt.rcParams.update(
     {
         'font.size': 8,
+        'text.color': WHITE,
         'axes.titlesize': 8,
         'axes.titlepad': 4,
+        'axes.edgecolor': WHITE,
+        'axes.facecolor': np.array([0, 0, 0, 0]),
+        'axes.labelcolor': WHITE,
+        'xtick.color': WHITE,
+        'ytick.color': WHITE,
+        'legend.facecolor': BLACK,
         'figure.figsize': [4.33, 2.5],
         'figure.dpi': 1200,
     }
 )
+WHITE_CMAP = LinearSegmentedColormap.from_list(
+    "transparent_white", [TRANSPARENT_WHITE, WHITE],
+)
+register_cmap(name="transparent_white", cmap=WHITE_CMAP)
 
 
 def main(args):
@@ -89,7 +106,7 @@ def main(args):
             args,
             dataset=dataset,
             filename=dataset.files["test"][idx],
-            figure_name=f"results_{percentile}th_percentile.pdf",
+            figure_name=f"results_{percentile}th_percentile.png",
             plot=args.plot,
         )
     compare_preds(dataset_train, savedir="Training")
@@ -249,7 +266,7 @@ def plot_example(args, dataset, filename, figure_name, plot=True):
 
     fig = plt.figure(figsize=[6.5, 7.5], constrained_layout=False)
     gs = fig.add_gridspec(
-        nrows=NROWS,
+        nrows=NROWS+1,
         ncols=NCOLS*2+2,
         width_ratios=[.2, *(.5 for _ in range(NCOLS*2+1))],
     )
@@ -324,55 +341,11 @@ def plot_example(args, dataset, filename, figure_name, plot=True):
     axs[1].set_yticklabels([])
     axs[1].set_xlabel("$x$ (km)")
 
-    vmin -= .05 * diff
-    vmax += .05 * diff
-    TO_SLICE = ['vrms', 'vint', 'vdepth']
-    START_AX_IDX = [3, 4, 5]
-    LINE_LABELS = ["Pretraining", "End estimate", "Ground truth"]
-    ZORDERS = [2, 3, 1]
-    line_axs = []
-    for i, (label_name, start_idx) in enumerate(zip(TO_SLICE, START_AX_IDX)):
-        line_ax = fig.add_subplot(gs[i+2, 7])
-        line_axs.append(line_ax)
-        for ax, label, zorder in zip(
-            axs[start_idx:start_idx+3*4:4], LINE_LABELS, ZORDERS,
-        ):
-            data = ax.images[0].get_array()
-            center_data = data[:, data.shape[1] // 2] / 1000
-            if label_name != 'vdepth':
-                y_min, y_max = time.min(), time.max()
-                line_ax.plot(center_data, time, zorder=zorder, label=label)
-            else:
-                y_min, y_max = depth.min(), depth.max()
-                line_ax.plot(center_data, depth, zorder=zorder, label=label)
-            height = y_max-y_min
-            x = cmps[data.shape[1]//2]
-            dcmp = cmps[1] - cmps[2]
-            rect = Rectangle(
-                xy=(x-.5*dcmp, y_min+.01*height),
-                width=dcmp,
-                height=height*.98,
-                ls=(0, (5, 5)),
-                lw=.5,
-                ec='w',
-                fc='none',
-            )
-            ax.add_patch(rect)
-        line_ax.set_xlim(vmin/1000, vmax/1000)
-        line_ax.set_ylim(y_max, y_min)
-        line_ax.set_yticklabels([])
-        line_ax.grid()
-        if i == 0:
-            line_ax.legend(
-                loc='lower center',
-                bbox_to_anchor=(.5, 1.125),
-                fontsize=6,
-                handlelength=.2,
-            )
-        if i == len(TO_SLICE) - 1:
-            line_ax.set_xlabel("Velocity (km/s)")
-        else:
-            line_ax.set_xticklabels([])
+    for ax in axs[:2]:
+        ax.images[0].set_cmap(WHITE_CMAP)
+        ax.remove()
+    for ax in axs[2::4]:
+        ax.images[0].set_cmap(WHITE_CMAP)
 
     gs.update(wspace=.15, hspace=.2)
     for ax in axs[:2]:
@@ -413,31 +386,23 @@ def plot_example(args, dataset, filename, figure_name, plot=True):
     axs[2+NROWS-1].set_title("End estimate")
     axs[2+2*(NROWS-1)].set_title("Ground truth")
 
-    position = gs[1, 7].get_position(fig)
+    position = gs[5, 5:7].get_position(fig)
     left, bottom, width, height = position.bounds
-    unpad_y = .4 * height
-    unpad_x = .4 * width
+    unpad_top = .4 * height
+    unpad_bottom = .4 * height
     cax = fig.add_axes(
-        [left, bottom+unpad_y, width-2*unpad_x, height-unpad_y]
+        [left, bottom+unpad_bottom, width, height-unpad_top-unpad_bottom]
     )
-    cbar = plt.colorbar(axs[3].images[0], cax=cax)
-    cbar.ax.set_ylabel("Velocity\n(km/s)")
+    cbar = plt.colorbar(axs[3].images[0], cax=cax, orientation="horizontal")
+    cbar.ax.set_xlabel("Velocity (km/s)")
     cbar.set_ticks(range(2000, 5000, 1000))
     cbar.set_ticklabels(range(2, 5, 1))
 
-    temp_axs = [*axs[:2], *np.array(axs[2:]).reshape([3, 4]).T.flatten()]
-    temp_axs.insert(-6, line_axs[0])
-    temp_axs.insert(-3, line_axs[1])
-    temp_axs.append(line_axs[2])
-    for ax, letter in zip(temp_axs, range(ord('a'), ord('q')+1)):
-        letter = f"({chr(letter)})"
-        plt.sca(ax)
-        x0, _ = plt.xlim()
-        y1, y0 = plt.ylim()
-        height = y1 - y0
-        plt.text(x0, y0-.02*height, letter, va='bottom')
-
-    plt.savefig(join(FIGURES_DIR, figure_name), bbox_inches="tight")
+    plt.savefig(
+        join(FIGURES_DIR, figure_name),
+        bbox_inches="tight",
+        transparent=True,
+    )
     if plot:
         plt.gcf().set_dpi(200)
         plt.show()
