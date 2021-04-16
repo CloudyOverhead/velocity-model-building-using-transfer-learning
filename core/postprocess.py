@@ -286,8 +286,15 @@ def plot_example(args, dataset, filename, figure_name, plot=True):
                 ims[n] = im
                 n += 1
 
+    offsets = np.arange(
+        dataset.acquire.gmin,
+        dataset.acquire.gmax,
+        dataset.acquire.dg,
+        dtype=float,
+    )
+    offsets *= dataset.model.dh
     axs[0].images[0].set_extent(
-        [rec_pos[0].min()/1000, rec_pos[0].max()/1000, time.max(), time.min()]
+        [offsets.min()/1000, offsets.max()/1000, time.max(), time.min()]
     )
     axs[0].invert_xaxis()
     for ax in axs[1:]:
@@ -653,8 +660,12 @@ def plot_real_data(args, dataset, plot=True):
     nt = dataset.acquire.NT
     times = np.arange(nt//resampling)*dt - tdelay
     offsets = np.arange(
-        dataset.acquire.gmin, dataset.acquire.gmax, dataset.acquire.dg,
+        dataset.acquire.gmin,
+        dataset.acquire.gmax,
+        dataset.acquire.dg,
+        dtype=float,
     )
+    offsets *= dataset.model.dh
 
     print("Stacking 1D case.")
     pretrained_vint = vint_meta.postprocess(pretrained['vint'])
