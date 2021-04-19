@@ -671,11 +671,13 @@ def plot_real_data(args, dataset, plot=True):
     pretrained_vint = vint_meta.postprocess(pretrained['vint'])
     pretrained_vrms = vint_meta.postprocess(pretrained['vrms'])
     pretrained_stacked = stack_2d(datacmp, times, offsets, pretrained_vrms)
+    pretrained_stacked *= times[:, None]**2
     pretrained_stacked = np.expand_dims(pretrained_stacked, axis=-1)
     print("Stacking 2D case.")
     pred_vint = vint_meta.postprocess(preds['vint'])
     pred_vrms = vint_meta.postprocess(preds['vrms'])
     pred_stacked = stack_2d(datacmp, times, offsets, pred_vrms)
+    pred_stacked *= times[:, None]**2
     pred_stacked = np.expand_dims(pred_stacked, axis=-1)
 
     fig, axs = plt.subplots(
