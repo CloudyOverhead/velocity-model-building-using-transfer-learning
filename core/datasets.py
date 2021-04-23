@@ -3,6 +3,7 @@
 
 from os.path import abspath
 
+import numpy as np
 from scipy.signal import butter, filtfilt
 from GeoFlow.GeoDataset import GeoDataset
 from GeoFlow.EarthModel import MarineModel
@@ -120,7 +121,10 @@ class USGS(Article2D):
 
         model.NX = NS*acquire.ds + acquire.gmax + 2*acquire.Npad
 
-        acquire.NT = 3071 * acquire.resampling
+        dt = acquire.dt * acquire.resampling
+        real_tdelay = 3 / 8
+        unpad = int((real_tdelay-acquire.tdelay) / dt)
+        acquire.NT = (3071-unpad) * acquire.resampling
 
         for name in inputs:
             inputs[name].mute_dir = False
@@ -137,7 +141,19 @@ def decorate_preprocess(self):
 
     def preprocess_real_data(data, labels):
         if not self.skip_preprocess:
-            data = type(self).preprocess(self, data, labels)
+            data = data.reshape([3071, -1, 72])
+            NT = int(self.acquire.NT / self.acquire.resampling)
+            data = data[-NT:]
+            data = data.swapaxes(1, 2)
+
+            data = np.expand_dims(data, axis=-1)
+
+            eps = np.finfo(np.float32).eps
+            trace_rms = np.sqrt(np.sum(data**2, axis=0, keepdims=True))
+            data /= trace_rms + eps
+            panel_max = np.amax(data, axis=(0, 1), keepdims=True)
+            data /= panel_max + eps
+            data *= 1000
 
             END_CMP = 2100
             data = data[:, :, :END_CMP]
