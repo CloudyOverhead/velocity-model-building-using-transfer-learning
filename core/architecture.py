@@ -143,6 +143,8 @@ class Hyperparameters2D(Hyperparameters1D):
 
         self.batch_size = 2
 
+        self.learning_rate = 8E-5
+
         self.encoder_kernels = [
             [15, 1, 1],
             [1, 9, 9],
@@ -160,6 +162,7 @@ class Hyperparameters2D(Hyperparameters1D):
                 "/lambda_85f1b_00000_0_2021-02-11_16-38-47/checkpoint_150"
             )
             self.restore_from = (CHECKPOINT_1D, None, None)
+            self.seed = (3, 4, 5)
 
 
 class Hyperparameters2DNoTL(Hyperparameters2D):
