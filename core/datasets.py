@@ -64,17 +64,21 @@ class Article1D(Dataset):
         for input in inputs.values():
             input.train_on_shots = True  # 1D shots are CMPs.
             input.mute_dir = True
-            input.random_static = True
-            input.random_static_max = 1
-            input.random_noise = True
-            input.random_noise_max = 0.02
-            input.random_time_scaling = True
         for output in outputs.values():
             output.train_on_shots = True
             output.identify_direct = False
 
         return model, acquire, inputs, outputs
 
+    def __init__(self, noise=False):
+        super().__init__()
+        if noise:
+            for input in self.inputs.values():
+                input.random_static = True
+                input.random_static_max = 1
+                input.random_noise = True
+                input.random_noise_max = 0.02
+                input.random_time_scaling = True
 
 class Article2D(Article1D):
     def set_dataset(self):
