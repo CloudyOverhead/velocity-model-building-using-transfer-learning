@@ -6,7 +6,7 @@ from os.path import join, isdir
 
 import numpy as np
 import tensorflow as tf
-from DefinedNN.RCNN2D import RCNN2D, Hyperparameters
+from GeoFlow.DefinedNN.RCNN2D import RCNN2D, Hyperparameters
 
 
 class RCNN2DUnpackReal(RCNN2D):

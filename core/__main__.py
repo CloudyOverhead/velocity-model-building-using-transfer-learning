@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Launch dataset generation, training or testing."""
 
-from GeoFlow import main, parser
+from GeoFlow.__main__ import main, parser
 
 
 def parse_args():
