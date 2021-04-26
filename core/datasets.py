@@ -18,8 +18,6 @@ class Dataset(GeoDataset):
 
 
 class Article1D(Dataset):
-    name = "Article1D"
-
     def set_dataset(self):
         self.trainsize = 5000
         self.validatesize = 0
@@ -78,10 +76,7 @@ class Article1D(Dataset):
         return model, acquire, inputs, outputs
 
 
-
 class Article2D(Article1D):
-    name = "Article2D"
-
     def set_dataset(self):
         model, acquire, inputs, outputs = super().set_dataset()
 
@@ -106,8 +101,6 @@ class Article2D(Article1D):
 
 
 class USGS(Article2D):
-    name = "USGS"
-
     def set_dataset(self):
         model, acquire, inputs, outputs = super().set_dataset()
 
