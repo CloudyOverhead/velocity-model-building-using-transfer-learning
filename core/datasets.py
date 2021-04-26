@@ -80,6 +80,7 @@ class Article1D(Dataset):
                 input.random_noise_max = 0.02
                 input.random_time_scaling = True
 
+
 class Article2D(Article1D):
     def set_dataset(self):
         model, acquire, inputs, outputs = super().set_dataset()
