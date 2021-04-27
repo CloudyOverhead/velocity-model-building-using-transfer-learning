@@ -140,6 +140,13 @@ def decorate_preprocess(self):
             data = data[-NT:]
             data = data.swapaxes(1, 2)
 
+            vmax = np.max(data, axis=0)
+            first_arrival = np.argmax(data > .4*vmax[None], axis=0)
+            dt = self.acquire.dt * self.acquire.resampling
+            pad = 2 * int(self.acquire.tdelay / dt)
+            for (i, j), trace_arrival in np.ndenumerate(first_arrival):
+                data[:trace_arrival-pad, i, j] = 0
+
             data = np.expand_dims(data, axis=-1)
 
             eps = np.finfo(np.float32).eps
