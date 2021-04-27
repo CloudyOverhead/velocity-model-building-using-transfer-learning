@@ -219,6 +219,34 @@ def sort_receivers(data):
     return data
 
 
+def sort_cmp(data):
+    shots = np.arange(NEAROFF + NG*DG, NEAROFF + NG*DG + NS*DS, DS)
+    recs = np.concatenate(
+        [np.arange(0, 0 + NG*DG, DG) + n*DS for n in range(NS)],
+        axis=0,
+    )
+    shots = np.repeat(shots, NG)
+    cmps = ((shots+recs) / 2 / 50).astype(int) * 50
+    offsets = shots - recs
+
+    ind = np.lexsort((offsets, cmps))
+    cmps = cmps[ind]
+    unique_cmps, counts = np.unique(cmps, return_counts=True)
+    firstcmp = unique_cmps[np.argmax(counts == 72)]
+    lastcmp = unique_cmps[-np.argmax(counts[::-1] == 72)-1]
+    ind1 = np.argmax(cmps == firstcmp)
+    ind2 = np.argmax(cmps > lastcmp)
+    ntraces = cmps[ind1:ind2].shape[0]
+    data_cmp = np.zeros([data.shape[0], ntraces])
+    n = 0
+    for ii, jj in enumerate(ind):
+        if ii >= ind1 and ii < ind2:
+            data_cmp[:, n] = data[:, jj]
+            n += 1
+
+    return data_cmp
+
+
 def plot(data, clip=.05):
     """Plot for quality control."""
     vmax = np.amax(data[:, 0]) * clip
@@ -242,17 +270,18 @@ if __name__ == "__main__":
     data, fid, cid = preprocess(data, fid, cid)
     data_interpolated = interpolate_traces(data)
     data_interpolated = sort_receivers(data_interpolated)
+    data_cmp = sort_cmp(data_interpolated)
     dummy_label = np.zeros([NT, NS])
     for i, dir in enumerate(["train", "test"]):
         save_path = join(SAVE_DIR, dir, f"example_{i}")
         with h5.File(save_path, "w") as save_file:
             save_file['sourcedata'] = data
-            save_file['shotgather'] = data_interpolated
+            save_file['shotgather'] = data_cmp
             for label in ['ref', 'vrms', 'vint', 'vdepth']:
                 save_file[label] = dummy_label
                 save_file[label+'_w'] = dummy_label
 
     # Plot some shot gathers.
-    plot(data_interpolated[:, :200])
+    plot(data_cmp[:, :200])
     # Constant offset plot.
-    plot(data_interpolated[:, ::72])
+    plot(data_cmp[:, :, 0])
