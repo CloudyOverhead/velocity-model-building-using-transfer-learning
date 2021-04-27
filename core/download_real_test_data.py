@@ -211,14 +211,6 @@ def interpolate_traces(data):
     return data_i
 
 
-def sort_receivers(data):
-    """Have closest receivers first."""
-    data = data.reshape([NT, NS, NG])
-    data = data[..., ::-1]
-    data = data.reshape([NT, -1])
-    return data
-
-
 def sort_cmp(data):
     shots = np.arange(NEAROFF + NG*DG, NEAROFF + NG*DG + NS*DS, DS)
     recs = np.concatenate(
@@ -269,7 +261,6 @@ if __name__ == "__main__":
     data, fid, cid = segy_to_numpy(SAVE_DIR, dfiles)
     data, fid, cid = preprocess(data, fid, cid)
     data_interpolated = interpolate_traces(data)
-    data_interpolated = sort_receivers(data_interpolated)
     data_cmp = sort_cmp(data_interpolated)
     dummy_label = np.zeros([NT, NS])
     for i, dir in enumerate(["train", "test"]):
@@ -284,4 +275,4 @@ if __name__ == "__main__":
     # Plot some shot gathers.
     plot(data_cmp[:, :200])
     # Constant offset plot.
-    plot(data_cmp[:, :, 0])
+    plot(data_cmp[:, ::72])
