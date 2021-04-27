@@ -264,6 +264,8 @@ if __name__ == "__main__":
     data_cmp = sort_cmp(data_interpolated)
     dummy_label = np.zeros([NT, NS])
     for i, dir in enumerate(["train", "test"]):
+        if not isdir(join(SAVE_DIR, dir)):
+            makedirs(join(SAVE_DIR, dir))
         save_path = join(SAVE_DIR, dir, f"example_{i}")
         with h5.File(save_path, "w") as save_file:
             save_file['sourcedata'] = data
