@@ -13,8 +13,9 @@ from skimage.metrics import structural_similarity as ssim
 from tensorflow.compat.v1.train import summary_iterator
 from GeoFlow.SeismicUtilities import sortcmp, stack
 import segyio
+from GeoFlow.__main__ import int_or_list
 
-from main import main as global_main, int_or_list
+from core.__main__ import main as global_main
 from core.architecture import (
     RCNN2D, RCNN2DUnpackReal, Hyperparameters1D, Hyperparameters2D,
     Hyperparameters2DNoTL,
