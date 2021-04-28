@@ -13,7 +13,7 @@ config = {
 }
 args.nn = getattr(architecture, args.nn)
 args.params = getattr(architecture, args.params)
-args.params = args.params(is_training=args.train)
+args.params = args.params(is_training=True)
 args.dataset = getattr(datasets, args.dataset)(args.noise)
 
 if args.debug:
