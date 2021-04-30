@@ -130,7 +130,7 @@ class Hyperparameters1D(Hyperparameters):
 
         if is_training:
             self.loss_scales = (
-                {'ref': .8, 'vrms': .2, 'vint': .0, 'vdepth': .0},
+                {'ref': .6, 'vrms': .3, 'vint': .1, 'vdepth': .0},
                 {'ref': .1, 'vrms': .7, 'vint': .2, 'vdepth': .0},
                 {'ref': .1, 'vrms': .3, 'vint': .5, 'vdepth': .1},
             )
