@@ -638,10 +638,13 @@ def plot_real_data(args, dataset, plot=True):
     data_meta.acquire.singleshot = True
     vint_meta = dataset.outputs['vint']
     shotgather = inputs['shotgather']
-    shotgather = data_preprocess(shotgather)
+    # Trigger first preprocess skipping.
+    data_meta.preprocess(None, None)
+    shotgather = data_meta.preprocess(shotgather, None)
+    shotgather = shotgather[..., 0]
 
     src_pos, rec_pos = dataset.acquire.set_rec_src()
-    datacmp, cmps = sortcmp(shotgather, src_pos, rec_pos)
+    _, cmps = sortcmp(None, src_pos, rec_pos)
     pretrained = dataset.generator.read_predictions(filename, "Pretraining")
     pretrained = {name: pretrained[name] for name in TOOUTPUTS}
     preds = dataset.generator.read_predictions(filename, "EndResults")
@@ -673,14 +676,16 @@ def plot_real_data(args, dataset, plot=True):
     print("Stacking 1D case.")
     pretrained_vint = vint_meta.postprocess(pretrained['vint'])
     pretrained_vrms = vint_meta.postprocess(pretrained['vrms'])
-    pretrained_stacked = stack_2d(datacmp, times, offsets, pretrained_vrms)
+    pretrained_stacked = stack_2d(shotgather, times, offsets, pretrained_vrms)
     pretrained_stacked *= times[:, None]**2
+    pretrained_stacked = data_preprocess(pretrained_stacked)
     pretrained_stacked = np.expand_dims(pretrained_stacked, axis=-1)
     print("Stacking 2D case.")
     pred_vint = vint_meta.postprocess(preds['vint'])
     pred_vrms = vint_meta.postprocess(preds['vrms'])
-    pred_stacked = stack_2d(datacmp, times, offsets, pred_vrms)
+    pred_stacked = stack_2d(shotgather, times, offsets, pred_vrms)
     pred_stacked *= times[:, None]**2
+    pred_stacked = data_preprocess(pred_stacked)
     pred_stacked = np.expand_dims(pred_stacked, axis=-1)
 
     fig, axs = plt.subplots(
