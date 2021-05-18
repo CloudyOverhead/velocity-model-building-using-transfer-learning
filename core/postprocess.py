@@ -720,12 +720,12 @@ def plot_real_data(args, dataset, plot=True):
     vint_meta.plot(
         pretrained_vint, axs=[axs[0]], vmin=1400, vmax=3100, cmap='jet',
     )
-    data_meta.plot(pretrained_stacked, axs=[axs[1]], clip=1E-2)
+    data_meta.plot(pretrained_stacked, axs=[axs[1]], vmin=0, clip=5E-2)
     vint_meta.plot(
         pred_vint, axs=[axs[2]], vmin=1400, vmax=3100, cmap='jet',
     )
-    data_meta.plot(pred_stacked, axs=[axs[3]], clip=1E-2)
-    data_meta.plot(stacked_usgs, axs=[axs[4]], clip=1E-7)
+    data_meta.plot(pred_stacked, axs=[axs[3]], vmin=0, clip=5E-2)
+    data_meta.plot(stacked_usgs, axs=[axs[4]], vmin=0, clip=1.5E-1)
 
     extent = [cmps.min()/1000, cmps.max()/1000, END_TIME, start_time]
 
