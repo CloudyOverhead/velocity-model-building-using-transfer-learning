@@ -5,15 +5,16 @@ from os import makedirs, listdir
 from os.path import join, exists
 from copy import deepcopy
 
+import segyio
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 from matplotlib.patches import Rectangle
+from scipy.ndimage import gaussian_filter
 from skimage.metrics import structural_similarity as ssim
 from tensorflow.compat.v1.train import summary_iterator
-from GeoFlow.SeismicUtilities import sortcmp, stack
-import segyio
 from GeoFlow.__main__ import int_or_list
+from GeoFlow.SeismicUtilities import sortcmp, stack
 
 from core.__main__ import main as global_main
 from core.architecture import (
@@ -714,6 +715,8 @@ def plot_real_data(args, dataset, plot=True):
     pred_vint = pred_vint[crop_top:crop_bottom]
     pred_stacked = pred_stacked[crop_top:crop_bottom]
     stacked_usgs = stacked_usgs[crop_top:crop_bottom]
+    pretrained_vint = gaussian_filter(pretrained_vint, [1, 9])
+    pred_vint = gaussian_filter(pred_vint, [1, 9])
     vint_meta.plot(
         pretrained_vint, axs=[axs[0]], vmin=1400, vmax=3100, cmap='jet',
     )
