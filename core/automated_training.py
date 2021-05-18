@@ -1,55 +1,23 @@
 # -*- coding: utf-8 -*-
 """Launch hyperoptimization and chain training stages."""
 
-from argparse import ArgumentParser
+from GeoFlow.AutomatedTraining.AutomatedTraining import optimize
 
-from AutomatedTraining.AutomatedTraining import optimize
-
-from core import datasets, architecture
-from core.architecture import RCNN2D
+from core.__main__ import parser
+from core import architecture, datasets
 
 
-parser = ArgumentParser()
-parser.add_argument(
-    "--params",
-    type=str,
-    default="Hyperparameters",
-    help="Name of hyperparameters from `RCNN2D` to use.",
-)
-parser.add_argument(
-    "--dataset",
-    type=str,
-    default="Dataset1Dsmall",
-    help="Name of dataset from `DefinedDataset` to use.",
-)
-parser.add_argument(
-    "--debug",
-    action='store_true',
-    help="Generate a small dataset of 5 examples.",
-)
-parser.add_argument(
-    "--eager",
-    action='store_true',
-    help="Run the Keras model eagerly, for debugging.",
-)
 args, config = parser.parse_known_args()
 config = {
     name[2:]: eval(value) for name, value in zip(config[::2], config[1::2])
 }
-
-args.dataset = getattr(datasets, args.dataset)()
-args.params = getattr(architecture, args.params)()
+args.nn = getattr(architecture, args.nn)
+args.params = getattr(architecture, args.params)
+args.params = args.params(is_training=True)
+args.dataset = getattr(datasets, args.dataset)(args.noise)
 
 if args.debug:
-    config["epochs"] = 1
-    config["steps_per_epoch"] = 5
+    args.params["epochs"] = 1
+    args.params["steps_per_epoch"] = 5
 
-optimize(
-    nn=RCNN2D,
-    params=args.params,
-    dataset=args.dataset,
-    gpus=None,
-    debug=args.debug,
-    eager=args.eager,
-    **config,
-)
+optimize(args, **config)

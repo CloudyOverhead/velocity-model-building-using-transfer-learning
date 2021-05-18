@@ -3,10 +3,14 @@
 
 from os.path import abspath
 
+import numpy as np
+from scipy.signal import butter, filtfilt
 from GeoFlow.GeoDataset import GeoDataset
 from GeoFlow.EarthModel import MarineModel
 from GeoFlow.SeismicGenerator import Acquisition
 from GeoFlow.GraphIO import Reftime, Vrms, Vint, Vdepth, ShotGather
+
+from core.download_real_test_data import NS
 
 
 class Dataset(GeoDataset):
@@ -14,12 +18,10 @@ class Dataset(GeoDataset):
 
 
 class Article1D(Dataset):
-    name = "Article1D"
-
     def set_dataset(self):
-        self.trainsize = 10000
+        self.trainsize = 5000
         self.validatesize = 0
-        self.testsize = 100
+        self.testsize = 10
 
         model = MarineModel()
         model.dh = 6.25
@@ -36,7 +38,6 @@ class Article1D(Dataset):
         model.vp_max = 4000.0
 
         acquire = Acquisition(model=model)
-        acquire.fs = True
         acquire.dt = .0004
         acquire.NT = int(8 / acquire.dt)
         acquire.resampling = 10
@@ -48,8 +49,8 @@ class Article1D(Dataset):
         acquire.peak_freq = 26
         acquire.df = 5
         acquire.wavefuns = [0, 1]
-        acquire.source_depth = 6.4  # Approximate average value.
-        acquire.receiver_depth = 13.7  # Approximate average value.
+        acquire.source_depth = (acquire.Npad+4) * model.dh
+        acquire.receiver_depth = (acquire.Npad+4) * model.dh
         acquire.tdelay = 3.0 / (acquire.peak_freq-acquire.df)
         acquire.singleshot = True
         acquire.configuration = 'inline'
@@ -60,35 +61,31 @@ class Article1D(Dataset):
                    Vint.name: Vint(model=model, acquire=acquire),
                    Vdepth.name: Vdepth(model=model, acquire=acquire)}
 
-        for name in inputs:
-            inputs[name].train_on_shots = True  # 1D shots are CMPs.
-            inputs[name].mute_dir = True
-        for name in outputs:
-            outputs[name].train_on_shots = True
-            outputs[name].identify_direct = False
+        for input in inputs.values():
+            input.train_on_shots = True  # 1D shots are CMPs.
+            input.mute_dir = True
+        for output in outputs.values():
+            output.train_on_shots = True
+            output.identify_direct = False
 
         return model, acquire, inputs, outputs
 
-    def __init__(self, noise=0):
-        if noise:
-            self.name = self.name + "_noise"
-
+    def __init__(self, noise=False):
         super().__init__()
         if noise:
-            for name in self.inputs:
-                self.inputs[name].random_static = True
-                self.inputs[name].random_static_max = 1
-                self.inputs[name].random_noise = True
-                self.inputs[name].random_noise_max = 0.02
+            for input in self.inputs.values():
+                input.random_static = True
+                input.random_static_max = 1
+                input.random_noise = True
+                input.random_noise_max = 0.02
+                input.random_time_scaling = True
 
 
 class Article2D(Article1D):
-    name = "Article2D"
-
     def set_dataset(self):
         model, acquire, inputs, outputs = super().set_dataset()
 
-        self.trainsize = 1000
+        self.trainsize = 500
         self.validatesize = 0
         self.testsize = 100
 
@@ -101,25 +98,74 @@ class Article2D(Article1D):
         model.ddip_max = 4
 
         acquire.singleshot = False
-        for name in inputs:
-            inputs[name].train_on_shots = False
-        for name in outputs:
-            outputs[name].train_on_shots = False
+        for input in inputs.values():
+            input.train_on_shots = False
+        for output in outputs.values():
+            output.train_on_shots = False
         return model, acquire, inputs, outputs
 
 
 class USGS(Article2D):
-    name = "USGS"
-
     def set_dataset(self):
-        model, acquire, inputs, _ = super().set_dataset()
+        model, acquire, inputs, outputs = super().set_dataset()
 
         self.trainsize = 1
         self.validatesize = 0
         self.testsize = 1
 
-        for name in inputs:
-            inputs[name].mute_dir = False
-        outputs = {}
+        model.NX = NS*acquire.ds + acquire.gmax + 2*acquire.Npad
+
+        dt = acquire.dt * acquire.resampling
+        real_tdelay = 3 / 8
+        unpad = int((real_tdelay-acquire.tdelay) / dt)
+        acquire.NT = (3071-unpad) * acquire.resampling
+
+        for input in inputs.values():
+            input.mute_dir = False
+            input.preprocess = decorate_preprocess(input)
 
         return model, acquire, inputs, outputs
+
+
+def decorate_preprocess(self):
+    # Preprocessing is costly, but it is run once in order to initialize the
+    # NN. We can skip the first preprocess, because we can infer the shapes
+    # manually.
+    self.skip_preprocess = True
+
+    def preprocess_real_data(data, labels):
+        if not self.skip_preprocess:
+            data = data.reshape([3071, -1, 72])
+            NT = int(self.acquire.NT / self.acquire.resampling)
+            data = data[-NT:]
+            data = data.swapaxes(1, 2)
+
+            data = np.expand_dims(data, axis=-1)
+
+            eps = np.finfo(np.float32).eps
+            trace_rms = np.sqrt(np.sum(data**2, axis=0, keepdims=True))
+            data /= trace_rms + eps
+            panel_max = np.amax(data, axis=(0, 1), keepdims=True)
+            data /= panel_max + eps
+            data *= 1000
+
+            END_CMP = 2100
+            data = data[:, :, :END_CMP]
+
+            return data
+        else:
+            self.skip_preprocess = False
+            return data
+    return preprocess_real_data
+
+
+def butterworth(lowcut, highcut, fs, order=5):
+    nyq = .5 * fs
+    lowcut /= nyq
+    highcut /= nyq
+    return butter(order, [lowcut, highcut], btype='band', analog=False)
+
+
+def bandpass(data, lowcut, highcut, fs, order=5, axis=-1):
+    b, a = butterworth(lowcut, highcut, fs, order=order)
+    return filtfilt(b, a, data, axis=axis)

@@ -32,7 +32,7 @@ The processed real data is available publicly at
 https://cmgds.marine.usgs.gov/fan_info.php?fan=1978-015-FA
 """
 
-from os import makedirs, pardir
+from os import makedirs
 from os.path import join, isfile, isdir
 from urllib.request import urlretrieve
 from urllib.parse import urljoin
@@ -46,6 +46,7 @@ import scipy.ndimage as ndimage
 
 # From the observer log, we get the acquisition parameters:
 NT = 3071
+NS = 2182
 DS = 50  # Shot point spacing.
 DG1 = 100  # Geophone spacing for channels 1-24.
 DG2 = 50  # Geophone spacing for channels 25-48.
@@ -64,7 +65,7 @@ def download_data(save_dir):
         "report.pdf": "https://pubs.usgs.gov/of/1995/0027/report.pdf",
         "CSDS32_1.SGY": urljoin(PREFIX, "SE/001/39/CSDS32_1.SGY"),
     }
-    dfiles = [f"U32A_{i:02d}.SGY" for i in range(1, 10)]  # Up to 21.
+    dfiles = [f"U32A_{i:02d}.SGY" for i in range(1, 10)]
 
     if not isdir(save_dir):
         makedirs(save_dir)
@@ -127,12 +128,6 @@ def preprocess(data, fid, cid):
     fid = np.concatenate(fid)
     cid = np.concatenate(cid)
 
-    # recnoSpn = InterpText()
-    # recnoSpn.read('recnoSpn.txt')
-
-    # recnoDelrt = InterpText()
-    # recnoDelrt.read('recnoDelrt.txt')
-
     prev_fldr = -9999
     fldr_bias = 0
     shot = np.full_like(cid, -1)
@@ -152,6 +147,8 @@ def preprocess(data, fid, cid):
 
         if fldr < prev_fldr:
             fldr_bias += 1000
+
+        prev_fldr = fldr
 
         fldr += fldr_bias
         if fldr not in NOT_SHOTS:
@@ -174,10 +171,7 @@ def preprocess(data, fid, cid):
         else:
             delrt[ii] = 0
 
-        prev_fldr = fldr
-
     valid = shot > 0
-    shot = shot[valid]
     delrt = delrt[valid]
     data = data[:, valid]
 
@@ -217,6 +211,34 @@ def interpolate_traces(data):
     return data_i
 
 
+def sort_cmp(data):
+    shots = np.arange(NEAROFF + NG*DG, NEAROFF + NG*DG + NS*DS, DS)
+    recs = np.concatenate(
+        [np.arange(0, 0 + NG*DG, DG) + n*DS for n in range(NS)],
+        axis=0,
+    )
+    shots = np.repeat(shots, NG)
+    cmps = ((shots+recs) / 2 / 50).astype(int) * 50
+    offsets = shots - recs
+
+    ind = np.lexsort((offsets, cmps))
+    cmps = cmps[ind]
+    unique_cmps, counts = np.unique(cmps, return_counts=True)
+    firstcmp = unique_cmps[np.argmax(counts == 72)]
+    lastcmp = unique_cmps[-np.argmax(counts[::-1] == 72)-1]
+    ind1 = np.argmax(cmps == firstcmp)
+    ind2 = np.argmax(cmps > lastcmp)
+    ntraces = cmps[ind1:ind2].shape[0]
+    data_cmp = np.zeros([data.shape[0], ntraces])
+    n = 0
+    for ii, jj in enumerate(ind):
+        if ii >= ind1 and ii < ind2:
+            data_cmp[:, n] = data[:, jj]
+            n += 1
+
+    return data_cmp
+
+
 def plot(data, clip=.05):
     """Plot for quality control."""
     vmax = np.amax(data[:, 0]) * clip
@@ -233,19 +255,26 @@ def plot(data, clip=.05):
 
 
 if __name__ == "__main__":
-    SAVE_DIR = join(pardir, "datasets", "USGS")
+    SAVE_DIR = join("datasets", "USGS")
 
     dfiles = download_data(SAVE_DIR)
     data, fid, cid = segy_to_numpy(SAVE_DIR, dfiles)
     data, fid, cid = preprocess(data, fid, cid)
     data_interpolated = interpolate_traces(data)
+    data_cmp = sort_cmp(data_interpolated)
+    dummy_label = np.zeros([NT, NS])
     for i, dir in enumerate(["train", "test"]):
+        if not isdir(join(SAVE_DIR, dir)):
+            makedirs(join(SAVE_DIR, dir))
         save_path = join(SAVE_DIR, dir, f"example_{i}")
         with h5.File(save_path, "w") as save_file:
             save_file['sourcedata'] = data
-            save_file['shotgather'] = data_interpolated
+            save_file['shotgather'] = data_cmp
+            for label in ['ref', 'vrms', 'vint', 'vdepth']:
+                save_file[label] = dummy_label
+                save_file[label+'_w'] = dummy_label
 
     # Plot some shot gathers.
-    plot(data_interpolated[:, :200])
+    plot(data_cmp[:, :200])
     # Constant offset plot.
-    plot(data_interpolated[:, ::72])
+    plot(data_cmp[:, ::72])
