@@ -79,7 +79,7 @@ class RCNN2DUnpackReal(RCNN2D):
                 )
                 for key, pred in evaluated_batch.items():
                     for slice in pred:
-                        evaluated[key].append(pred)
+                        evaluated[key].append(slice)
             if batch_pad:
                 for key, pred in evaluated.items():
                     del evaluated[key][-batch_pad:]
