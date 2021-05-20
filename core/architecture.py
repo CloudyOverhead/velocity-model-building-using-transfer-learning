@@ -2,7 +2,7 @@
 """Build the neural network for predicting v_p in 2D and in depth."""
 
 from os import mkdir
-from os.path import join, isdir
+from os.path import join, isdir, abspath
 
 import numpy as np
 import tensorflow as tf
@@ -154,12 +154,8 @@ class Hyperparameters2D(Hyperparameters1D):
         self.rcnn_kernel = [15, 3, 3]
 
         if is_training:
-            CHECKPOINT_1D = (
-                "/home/CloudyOverhead/jacques/Drive/Drive/GitHub"
-                "/velocity-model-building-using-transfer-learning/logs"
-                "/test-on-usgs/4d92542_Reintroduce_deformations_in_dataset"
-                "/0/model/lambda_2021-02-11_16-38-47"
-                "/lambda_85f1b_00000_0_2021-02-11_16-38-47/checkpoint_150"
+            CHECKPOINT_1D = abspath(
+                join(".", "logs", "weights_1d", "checkpoint_60")
             )
             self.restore_from = (CHECKPOINT_1D, None, None)
             self.seed = (3, 4, 5)
