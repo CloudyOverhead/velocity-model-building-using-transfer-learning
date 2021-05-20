@@ -178,11 +178,13 @@ def combine_predictions(dataset, logdir, savedir):
         }
         directory, filename = split(filename)
         filedir = join(directory, savedir)
-        makedirs(filedir)
+        if not exists(filedir):
+            makedirs(filedir)
         dataset.generator.write_predictions(
             None, filedir, average, filename=filename,
         )
-        makedirs(f"{filedir}_std")
+        if not exists(f"{filedir}_std"):
+            makedirs(f"{filedir}_std")
         dataset.generator.write_predictions(
             None, f"{filedir}_std", std, filename=filename,
         )
