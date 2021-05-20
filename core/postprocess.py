@@ -69,10 +69,6 @@ def main(args):
             args.gpus,
             "NoTransferLearning",
         )
-        if isinstance(args.gpus, list):
-            args.gpus = [args.gpus[0]]
-        else:
-            args.gpus = 1
         launch_both_inferences(args, RCNN2DUnpackReal, dataset_real)
 
     compare_preds(dataset_train, savedir="Training")
