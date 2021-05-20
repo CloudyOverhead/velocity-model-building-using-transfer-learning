@@ -2,7 +2,7 @@
 
 from argparse import ArgumentParser, Namespace
 from os import makedirs, listdir
-from os.path import join, exists
+from os.path import join, exists, split
 from copy import deepcopy
 
 import segyio
@@ -134,21 +134,58 @@ def launch_inference(nn, params, dataset, logdir, gpus, savedir):
     print("Weights:", logdir)
     print("Case:", savedir)
 
-    current_args = Namespace(
-        nn=nn,
-        params=params,
-        dataset=dataset,
-        logdir=logdir,
-        generate=False,
-        train=False,
-        test=True,
-        gpus=gpus,
-        savedir=savedir,
-        plot=False,
-        debug=False,
-        eager=False,
-    )
-    global_main(current_args)
+    logdirs = listdir(logdir)
+    for i, current_logdir in enumerate(logdirs):
+        print(f"Using NN {i+1} out of {len(logdirs)}.")
+        current_logdir = join(logdir, current_logdir)
+        current_savedir = f"{savedir}_{i}"
+        current_args = Namespace(
+            nn=nn,
+            params=params,
+            dataset=dataset,
+            logdir=current_logdir,
+            generate=False,
+            train=False,
+            test=True,
+            gpus=gpus,
+            savedir=current_savedir,
+            plot=False,
+            debug=False,
+            eager=False,
+        )
+        global_main(current_args)
+
+    combine_predictions(dataset, logdir, savedir)
+
+
+def combine_predictions(dataset, logdir, savedir):
+    print("Averaging predictions.")
+    logdirs = listdir(logdir)
+    for filename in dataset.files["test"]:
+        preds = {key: [] for key in dataset.generator.outputs}
+        for i in range(len(logdirs)):
+            current_load_dir = f"{savedir}_{i}"
+            current_preds = dataset.generator.read_predictions(
+                filename, current_load_dir,
+            )
+            for key, value in current_preds.items():
+                preds[key].append(value)
+        average = {
+            key: np.mean(value, axis=0) for key, value in preds.items()
+        }
+        std = {
+            key: np.std(value, axis=0) for key, value in preds.items()
+        }
+        directory, filename = split(filename)
+        filedir = join(directory, savedir)
+        makedirs(filedir)
+        dataset.generator.write_predictions(
+            None, filedir, average, filename=filename,
+        )
+        makedirs(f"{filedir}_std")
+        dataset.generator.write_predictions(
+            None, f"{filedir}_std", std, filename=filename,
+        )
 
 
 def compare_preds(dataset, savedir):
