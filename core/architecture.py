@@ -174,7 +174,7 @@ class Hyperparameters2D(Hyperparameters1D):
 
         if is_training:
             CHECKPOINT_1D = abspath(
-                join(".", "logs", "weights_1d", "checkpoint_60")
+                join(".", "logs", "weights_1d", "0", "checkpoint_60")
             )
             self.restore_from = (CHECKPOINT_1D, None, None)
             self.seed = (3, 4, 5)
