@@ -2,7 +2,8 @@
 """Build the neural network for predicting v_p in 2D and in depth."""
 
 from os import mkdir
-from os.path import join, isdir
+from os.path import join, isdir, abspath
+from copy import deepcopy
 
 import numpy as np
 import tensorflow as tf
@@ -29,6 +30,11 @@ class RCNN2DUnpackReal(RCNN2D):
 
         input_shapes = {'shotgather': (nt, ng, self.cmps_per_iter, 1)}
         params.batch_size = 1
+        params = deepcopy(params)
+        if devices is not None:
+            params.batch_size = len(devices)
+        else:
+            params.batch_size = len(tf.config.list_physical_devices('GPU'))
         super().__init__(
             input_shapes, params, dataset, checkpoint_dir, devices,
             run_eagerly,
@@ -45,25 +51,38 @@ class RCNN2DUnpackReal(RCNN2D):
         if not isdir(savedir):
             mkdir(savedir)
 
+        batch_size = self.params.batch_size
         for data, _ in tfdataset:
             evaluated = {key: [] for key in self.tooutputs}
             shotgather = data['shotgather'][0]
             filename = data['filename'][0]
             qty_cmps = shotgather.shape[2]
             shotgather = self.split_data(shotgather)
-            for i, slice in enumerate(shotgather):
-                print(f"Processing slice {i+1} out of {len(shotgather)}.")
-                evaluated_slice = self.predict(
+            batch_pad = int(shotgather.shape[0] % batch_size)
+            pads = [[0, batch_pad], *[[0, 0]]*(shotgather.ndim-1)]
+            shotgather = np.pad(shotgather, pads)
+            shotgather = shotgather.reshape(
+                [-1, batch_size, *shotgather.shape[1:]]
+            )
+            for i, batch in enumerate(shotgather):
+                print(f"Processing batch {i+1} out of {len(shotgather)}.")
+                filename_input = tf.expand_dims(filename, axis=0)
+                filename_input = tf.repeat(filename_input, batch_size, axis=0)
+                evaluated_batch = self.predict(
                     {
-                        'filename': tf.expand_dims(filename, axis=0),
-                        'shotgather': tf.expand_dims(slice, axis=0),
+                        'filename': filename_input,
+                        'shotgather': batch,
                     },
-                    batch_size=1,
+                    batch_size=batch_size,
                     max_queue_size=10,
                     use_multiprocessing=False,
                 )
-                for key, pred in evaluated_slice.items():
-                    evaluated[key].append(pred[0])
+                for key, pred in evaluated_batch.items():
+                    for slice in pred:
+                        evaluated[key].append(slice)
+            if batch_pad:
+                for key, pred in evaluated.items():
+                    del evaluated[key][-batch_pad:]
             print("Joining slices.")
             evaluated = self.unsplit_predictions(evaluated, qty_cmps)
             for lbl, out in evaluated.items():
@@ -154,12 +173,8 @@ class Hyperparameters2D(Hyperparameters1D):
         self.rcnn_kernel = [15, 3, 3]
 
         if is_training:
-            CHECKPOINT_1D = (
-                "/home/CloudyOverhead/jacques/Drive/Drive/GitHub"
-                "/velocity-model-building-using-transfer-learning/logs"
-                "/test-on-usgs/4d92542_Reintroduce_deformations_in_dataset"
-                "/0/model/lambda_2021-02-11_16-38-47"
-                "/lambda_85f1b_00000_0_2021-02-11_16-38-47/checkpoint_150"
+            CHECKPOINT_1D = abspath(
+                join(".", "logs", "weights_1d", "0", "checkpoint_60")
             )
             self.restore_from = (CHECKPOINT_1D, None, None)
             self.seed = (3, 4, 5)
