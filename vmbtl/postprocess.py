@@ -16,12 +16,12 @@ from tensorflow.compat.v1.train import summary_iterator
 from GeoFlow.__main__ import int_or_list
 from GeoFlow.SeismicUtilities import sortcmp, stack
 
-from core.__main__ import main as global_main
-from core.architecture import (
+from vmbtl.__main__ import main as global_main
+from vmbtl.architecture import (
     RCNN2D, RCNN2DUnpackReal, Hyperparameters1D, Hyperparameters2D,
     Hyperparameters2DNoTL,
 )
-from core.datasets import Article2D, USGS
+from vmbtl.datasets import Article2D, USGS
 
 FIGURES_DIR = "figures"
 TOINPUTS = ['shotgather']
