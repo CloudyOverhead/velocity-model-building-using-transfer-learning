@@ -4,7 +4,7 @@
 from os.path import abspath
 
 import numpy as np
-from scipy.signal import butter, filtfilt, convolve
+from scipy.signal import convolve
 from GeoFlow.GeoDataset import GeoDataset
 from GeoFlow.EarthModel import MarineModel
 from GeoFlow.SeismicGenerator import Acquisition
@@ -176,15 +176,3 @@ def decorate_preprocess(self):
             self.skip_preprocess = False
             return data
     return preprocess_real_data
-
-
-def butterworth(lowcut, highcut, fs, order=5):
-    nyq = .5 * fs
-    lowcut /= nyq
-    highcut /= nyq
-    return butter(order, [lowcut, highcut], btype='band', analog=False)
-
-
-def bandpass(data, lowcut, highcut, fs, order=5, axis=-1):
-    b, a = butterworth(lowcut, highcut, fs, order=order)
-    return filtfilt(b, a, data, axis=axis)
