@@ -646,7 +646,7 @@ def plot_losses(logdir_1d, params_1d, logdir_2d, params_2d, plot=True):
     vmax, vmin = data.values.max(), data.values.min()
     diff = np.log10(vmax) - np.log10(vmin)
     plt.ylim([10**(np.log10(vmin)-.1*diff), 10**(np.log10(vmax)+.1*diff)])
-    plt.xlabel("Epoch")
+    plt.xlabel("Iteration")
     plt.ylabel("Loss")
     plt.legend(
         loc='lower center',
