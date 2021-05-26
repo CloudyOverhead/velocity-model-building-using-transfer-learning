@@ -598,8 +598,8 @@ def load_events(logdir):
 
 
 def plot_losses(logdir_1d, params_1d, logdir_2d, params_2d, plot=True):
-    data_1d = load_events(logdir_1d)
-    data_2d = load_events(logdir_2d)
+    data_1d = load_events(join(logdir_1d, "0"))
+    data_2d = load_events(join(logdir_2d, "0"))
     data = pd.concat([data_1d, data_2d], ignore_index=True)
     qty_stages_1d = len(params_1d.loss_scales)
     qty_stages_2d = len(params_2d.loss_scales)
