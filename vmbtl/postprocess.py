@@ -858,7 +858,7 @@ if __name__ == "__main__":
         ),
     )
     parser.add_argument(
-        "--no_inference",
+        "--no-inference",
         action="store_true",
         help=(
             "Do not run inference if predictions have already been generated."
