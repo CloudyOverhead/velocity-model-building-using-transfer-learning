@@ -16,12 +16,12 @@ from tensorflow.compat.v1.train import summary_iterator
 from GeoFlow.__main__ import int_or_list
 from GeoFlow.SeismicUtilities import sortcmp, stack
 
-from core.__main__ import main as global_main
-from core.architecture import (
+from vmbtl.__main__ import main as global_main
+from vmbtl.architecture import (
     RCNN2D, RCNN2DUnpackReal, Hyperparameters1D, Hyperparameters2D,
     Hyperparameters2DNoTL,
 )
-from core.datasets import Article2D, USGS
+from vmbtl.datasets import Article2D, USGS
 
 FIGURES_DIR = "figures"
 TOINPUTS = ['shotgather']
@@ -598,8 +598,8 @@ def load_events(logdir):
 
 
 def plot_losses(logdir_1d, params_1d, logdir_2d, params_2d, plot=True):
-    data_1d = load_events(logdir_1d)
-    data_2d = load_events(logdir_2d)
+    data_1d = load_events(join(logdir_1d, "0"))
+    data_2d = load_events(join(logdir_2d, "0"))
     data = pd.concat([data_1d, data_2d], ignore_index=True)
     qty_stages_1d = len(params_1d.loss_scales)
     qty_stages_2d = len(params_2d.loss_scales)
@@ -858,7 +858,7 @@ if __name__ == "__main__":
         ),
     )
     parser.add_argument(
-        "--no_inference",
+        "--no-inference",
         action="store_true",
         help=(
             "Do not run inference if predictions have already been generated."

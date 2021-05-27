@@ -10,7 +10,7 @@ from GeoFlow.EarthModel import MarineModel
 from GeoFlow.SeismicGenerator import Acquisition
 from GeoFlow.GraphIO import Reftime, Vrms, Vint, Vdepth, ShotGather
 
-from core.download_real_test_data import NS
+from vmbtl.download_real_test_data import NS
 
 
 class Dataset(GeoDataset):

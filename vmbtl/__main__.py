@@ -5,7 +5,7 @@ from GeoFlow.__main__ import main, parser
 
 
 def parse_args():
-    from core import datasets, architecture
+    from vmbtl import datasets, architecture
 
     args, unknown_args = parser.parse_known_args()
     assert not (args.train and args.test)
