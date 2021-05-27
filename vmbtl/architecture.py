@@ -183,7 +183,4 @@ class Hyperparameters2D(Hyperparameters1D):
 class Hyperparameters2DNoTL(Hyperparameters2D):
     def __init__(self, is_training=True):
         super().__init__(is_training=is_training)
-
-        self.epochs *= 2
-
         self.restore_from = None
