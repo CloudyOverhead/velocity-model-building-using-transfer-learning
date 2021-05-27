@@ -157,7 +157,7 @@ def decorate_preprocess(self):
             vmax = np.amax(data, axis=0)
             first_arrival = np.argmax(data > .4*vmax[None], axis=0)
             dt = self.acquire.dt * self.acquire.resampling
-            pad = int(1.5 * self.acquire.tdelay / dt)
+            pad = int(1 / self.acquire.peak_freq / dt)
             mask = np.ones_like(data, dtype=bool)
             for (i, j), trace_arrival in np.ndenumerate(first_arrival):
                 mask[:trace_arrival-pad, i, j] = False
