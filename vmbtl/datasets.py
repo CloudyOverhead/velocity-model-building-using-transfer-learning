@@ -144,7 +144,7 @@ def decorate_preprocess(self):
             data = data[:, :, :END_CMP]
 
             eps = np.finfo(np.float32).eps
-            agc_kernel = np.ones([21, 5, 5])
+            agc_kernel = np.ones([21, 5, 1])
             agc_kernel /= agc_kernel.size
             pads = [[int(pad//2), int(pad//2)] for pad in agc_kernel.shape]
             gain = convolve(
