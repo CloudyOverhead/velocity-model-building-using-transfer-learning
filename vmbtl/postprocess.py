@@ -573,31 +573,144 @@ def plot_losses(logdir_1d, params_1d, logdir_2d, params_2d, plot=True):
 def plot_real_data(args, dataset, plot=True):
     filename = join(dataset.basepath, dataset.name, "test", "example_1")
     inputs, outputs, _ = dataset.generator.read(filename)
-    data_meta = deepcopy(dataset.inputs['shotgather'])
-    data_meta.acquire.singleshot = True
-    vint_meta = dataset.outputs['vint']
-    shotgather = inputs['shotgather']
-    # Trigger first preprocess skipping.
-    data_meta.preprocess(None, None)
-    shotgather = data_meta.preprocess(shotgather, None)
-    shotgather = shotgather[..., 0]
 
-    src_pos, rec_pos = dataset.acquire.set_rec_src()
-    _, cmps = sortcmp(None, src_pos, rec_pos)
     pretrained = dataset.generator.read_predictions(filename, "Pretraining")
     pretrained = {name: pretrained[name] for name in TOOUTPUTS}
     preds = dataset.generator.read_predictions(filename, "EndResults")
     preds = {name: preds[name] for name in TOOUTPUTS}
 
-    stacked_filepath = join(dataset.basepath, dataset.name, "CSDS32_1.SGY")
-    with segyio.open(stacked_filepath, "r", ignore_geometry=True) as segy:
-        stacked_usgs = [segy.trace[trid] for trid in range(segy.tracecount)]
-        stacked_usgs = np.array(stacked_usgs)
-        stacked_usgs = stacked_usgs.T
-    stacked_usgs = stacked_usgs[:, -2300:-160]
-    stacked_usgs = stacked_usgs[:, ::-1]
-    stacked_usgs = data_preprocess(stacked_usgs)
-    stacked_usgs = np.expand_dims(stacked_usgs, axis=-1)
+    plot_real_stacks(dataset, pretrained, preds, plot=plot)
+    plot_real_models(dataset, inputs, preds, plot=plot)
+
+
+def plot_real_models(dataset, pretrained, preds, plot=True):
+    fig, axs = plt.subplots(
+        ncols=2,
+        nrows=3,
+        figsize=[4.33, 7],
+        constrained_layout=False,
+        gridspec_kw={"width_ratios": [95, 5], "hspace": .3},
+    )
+    for ax in axs[1:, 1]:
+        ax.remove()
+    cax = axs[0, 1]
+    axs = axs[:, 0]
+    for shared_axes in [cax.get_shared_x_axes(), cax.get_shared_y_axes()]:
+        shared_axes.remove(cax)
+
+    src_pos, rec_pos = dataset.acquire.set_rec_src()
+    _, cmps = sortcmp(None, src_pos, rec_pos)
+
+    resampling = dataset.acquire.resampling
+    dt = dataset.acquire.dt * resampling
+    tdelay = dataset.acquire.tdelay
+    offsets = np.arange(
+        dataset.acquire.gmin,
+        dataset.acquire.gmax,
+        dataset.acquire.dg,
+        dtype=float,
+    )
+    offsets *= dataset.model.dh
+
+    ref = preds['ref'] > .1
+    crop_top = int(np.nonzero(ref.any(axis=1))[0][0] * .95)
+    start_time = crop_top*dt - tdelay
+    END_TIME = 10
+    crop_bottom = int((END_TIME+tdelay) / dt)
+
+    dh = dataset.model.dh
+    TOP_VINT = 1500
+    start_depth = start_time * TOP_VINT
+    crop_top_d = int(start_depth / dh)
+    END_DEPTH = 12500
+    crop_bottom_d = int(END_DEPTH / dh)
+
+    data_meta = deepcopy(dataset.inputs['shotgather'])
+    data_meta.acquire.singleshot = True
+    vint_meta = dataset.outputs['vint']
+
+    pretrained_vint = vint_meta.postprocess(pretrained['vint'])
+    pred_vint = vint_meta.postprocess(preds['vint'])
+    pred_vdepth = vint_meta.postprocess(preds['vdepth'])
+    pretrained_vint = gaussian_filter(pretrained_vint, [5, 15])
+    pred_vint = gaussian_filter(pred_vint, [5, 15])
+    pred_vdepth = gaussian_filter(pred_vint, [5, 15])
+    pretrained_vint = pretrained_vint[crop_top:crop_bottom]
+    pred_vint = pred_vint[crop_top:crop_bottom]
+    pred_vdepth = pred_vdepth[crop_top_d:crop_bottom_d]
+
+    vint_meta.plot(
+        pretrained_vint, axs=[axs[0]], vmin=1400, vmax=None, cmap='jet',
+    )
+    vint_meta.plot(
+        pred_vint, axs=[axs[2]], vmin=1400, vmax=None, cmap='jet',
+    )
+    vint_meta.plot(
+        pred_vdepth, axs=[axs[2]], vmin=1400, vmax=None, cmap='jet',
+    )
+
+    extent = [cmps.min()/1000, cmps.max()/1000, END_TIME, start_time]
+    extent_d = [cmps.min()/1000, cmps.max()/1000, END_DEPTH, start_depth]
+
+    for i, ax in enumerate(axs[:-1]):
+        ax.images[0].set_extent(extent)
+    axs[-1].images[0].set_extent(extent_d)
+
+    for ax in axs:
+        ax.set_title("")
+        if ax.images:
+            cbar = ax.images[-1].colorbar
+            if cbar is not None:
+                cbar.remove()
+
+    for ax in axs[:-1]:
+        ax.set_xticklabels([])
+
+    for ax in axs:
+        ax.tick_params(which='minor', length=2)
+        ax.minorticks_on()
+
+    plt.xlabel("$x$ (km)")
+    for ax in axs[:-1]:
+        ax.set_ylabel("$t$ (s)")
+    axs[-1].set_ylabel("$z$ (km)")
+
+    cbar = plt.colorbar(axs[0].images[0], cax=cax)
+    cbar.ax.set_ylabel("Velocity (km/s)")
+    cbar.set_ticks(range(2000, 5000, 1000))
+    cbar.set_ticklabels(range(2, 5, 1))
+
+    for ax, letter in zip(axs, range(ord('a'), ord('e')+1)):
+        letter = f"({chr(letter)})"
+        plt.sca(ax)
+        x0, _ = plt.xlim()
+        y1, y0 = plt.ylim()
+        height = y1 - y0
+        plt.text(x0, y0-.02*height, letter, va='bottom')
+
+    plt.savefig(join(FIGURES_DIR, "real_models.pdf"), bbox_inches="tight")
+    if plot:
+        plt.gcf().set_dpi(200)
+        plt.show()
+    else:
+        plt.clf()
+
+
+def plot_real_stacks(dataset, inputs, preds, plot=True):
+    fig, axs = plt.subplots(
+        ncols=1,
+        nrows=2,
+        figsize=[4.33, 7],
+        constrained_layout=False,
+        gridspec_kw={"hspace": .3},
+    )
+
+    src_pos, rec_pos = dataset.acquire.set_rec_src()
+    _, cmps = sortcmp(None, src_pos, rec_pos)
+
+    data_meta = deepcopy(dataset.inputs['shotgather'])
+    data_meta.acquire.singleshot = True
+    vint_meta = dataset.outputs['vint']
 
     resampling = dataset.acquire.resampling
     dt = dataset.acquire.dt * resampling
@@ -612,56 +725,38 @@ def plot_real_data(args, dataset, plot=True):
     )
     offsets *= dataset.model.dh
 
-    print("Stacking 1D case.")
-    pretrained_vint = vint_meta.postprocess(pretrained['vint'])
-    pretrained_vrms = vint_meta.postprocess(pretrained['vrms'])
-    pretrained_stacked = stack_2d(shotgather, times, offsets, pretrained_vrms)
-    pretrained_stacked *= times[:, None]**2
-    pretrained_stacked = data_preprocess(pretrained_stacked)
-    pretrained_stacked = np.expand_dims(pretrained_stacked, axis=-1)
-    print("Stacking 2D case.")
-    pred_vint = vint_meta.postprocess(preds['vint'])
-    pred_vrms = vint_meta.postprocess(preds['vrms'])
-    pred_stacked = stack_2d(shotgather, times, offsets, pred_vrms)
-    pred_stacked *= times[:, None]**2
-    pred_stacked = data_preprocess(pred_stacked)
-    pred_stacked = np.expand_dims(pred_stacked, axis=-1)
-
-    fig, axs = plt.subplots(
-        ncols=2,
-        nrows=5,
-        figsize=[4.33, 7],
-        constrained_layout=False,
-        gridspec_kw={"width_ratios": [95, 5], "hspace": .3},
-    )
-    for ax in axs[1:, 1]:
-        ax.remove()
-    cax = axs[0, 1]
-    axs = axs[:, 0]
-
-    for shared_axes in [cax.get_shared_x_axes(), cax.get_shared_y_axes()]:
-        shared_axes.remove(cax)
-
     ref = preds['ref'] > .1
     crop_top = int(np.nonzero(ref.any(axis=1))[0][0] * .95)
     start_time = crop_top*dt - tdelay
     END_TIME = 10
     crop_bottom = int((END_TIME+tdelay) / dt)
 
-    pretrained_vint = pretrained_vint[crop_top:crop_bottom]
-    pretrained_stacked = pretrained_stacked[crop_top:crop_bottom]
-    pred_vint = pred_vint[crop_top:crop_bottom]
+    shotgather = inputs['shotgather']
+    # Trigger first preprocess skipping.
+    data_meta.preprocess(None, None)
+    shotgather = data_meta.preprocess(shotgather, None)
+    shotgather = shotgather[..., 0]
+
+    stacked_filepath = join(dataset.basepath, dataset.name, "CSDS32_1.SGY")
+    with segyio.open(stacked_filepath, "r", ignore_geometry=True) as segy:
+        stacked_usgs = [segy.trace[trid] for trid in range(segy.tracecount)]
+        stacked_usgs = np.array(stacked_usgs)
+        stacked_usgs = stacked_usgs.T
+    stacked_usgs = stacked_usgs[:, -2300:-160]
+    stacked_usgs = stacked_usgs[:, ::-1]
+    stacked_usgs = data_preprocess(stacked_usgs)
+    stacked_usgs = np.expand_dims(stacked_usgs, axis=-1)
+
+    print("Stacking.")
+    pred_vrms = vint_meta.postprocess(preds['vrms'])
+    pred_stacked = stack_2d(shotgather, times, offsets, pred_vrms)
+    pred_stacked *= times[:, None]**2
+    pred_stacked = data_preprocess(pred_stacked)
+    pred_stacked = np.expand_dims(pred_stacked, axis=-1)
+
     pred_stacked = pred_stacked[crop_top:crop_bottom]
     stacked_usgs = stacked_usgs[crop_top:crop_bottom]
-    pretrained_vint = gaussian_filter(pretrained_vint, [1, 9])
-    pred_vint = gaussian_filter(pred_vint, [1, 9])
-    vint_meta.plot(
-        pretrained_vint, axs=[axs[0]], vmin=1400, vmax=3100, cmap='jet',
-    )
-    data_meta.plot(pretrained_stacked, axs=[axs[1]], vmin=0, clip=5E-2)
-    vint_meta.plot(
-        pred_vint, axs=[axs[2]], vmin=1400, vmax=3100, cmap='jet',
-    )
+
     data_meta.plot(pred_stacked, axs=[axs[3]], vmin=0, clip=5E-2)
     data_meta.plot(stacked_usgs, axs=[axs[4]], vmin=0, clip=1.5E-1)
 
@@ -688,11 +783,6 @@ def plot_real_data(args, dataset, plot=True):
     for ax in axs:
         ax.set_ylabel("$t$ (s)")
 
-    cbar = plt.colorbar(axs[0].images[0], cax=cax)
-    cbar.ax.set_ylabel("Velocity (km/s)")
-    cbar.set_ticks(range(2000, 5000, 1000))
-    cbar.set_ticklabels(range(2, 5, 1))
-
     for ax, letter in zip(axs, range(ord('a'), ord('e')+1)):
         letter = f"({chr(letter)})"
         plt.sca(ax)
@@ -701,7 +791,7 @@ def plot_real_data(args, dataset, plot=True):
         height = y1 - y0
         plt.text(x0, y0-.02*height, letter, va='bottom')
 
-    plt.savefig(join(FIGURES_DIR, "results_real.pdf"), bbox_inches="tight")
+    plt.savefig(join(FIGURES_DIR, "real_stacks.pdf"), bbox_inches="tight")
     if plot:
         plt.gcf().set_dpi(200)
         plt.show()
