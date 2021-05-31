@@ -1,16 +1,16 @@
 # -*- coding: utf-8 -*-
 """Define parameters for different datasets."""
 
-from os.path import abspath
+from os.path import abspath, join
 
 import numpy as np
-from scipy.signal import convolve
+from scipy.signal import convolve, hann
 from GeoFlow.GeoDataset import GeoDataset
 from GeoFlow.EarthModel import MarineModel
 from GeoFlow.SeismicGenerator import Acquisition
 from GeoFlow.GraphIO import Reftime, Vrms, Vint, Vdepth, ShotGather
 
-from vmbtl.download_real_test_data import NS
+from vmbtl.download_real_test_data import NS, NG
 
 
 class Dataset(GeoDataset):
@@ -106,6 +106,16 @@ class Article2D(Article1D):
 
 
 class USGS(Article2D):
+    def __init__(self, *args, **kwargs):
+        super().__init__(self, *args, **kwargs)
+
+        filename = join(self.basepath, self.name, "test", "example_1")
+        inputs, _, _ = self.generator.read(filename)
+        d = inputs['shotgather']
+        d = d.reshape([d.shape[0], -1, NG])
+        d = d[:, 1000]
+        self.acquire.source_generator = real_source_generator(self, d)
+
     def set_dataset(self):
         model, acquire, inputs, outputs = super().set_dataset()
 
@@ -178,3 +188,32 @@ def decorate_preprocess(self):
             self.skip_preprocess = False
             return data
     return preprocess_real_data
+
+
+def real_source_generator(self, d, nt_wav=41):
+    def zero_phase_real_wavelet():
+        source = np.zeros(self.acquire.NT)
+        real_tdelay = 3 / 8
+        t0 = int(real_tdelay / self.acquire.dt)
+        w = estimate_zero_phase_wavelet(d, nt_wav=nt_wav)
+        r = self.acquire.resampling
+        w = np.repeat(w, r)
+        source[t0-nt_wav*r:t0+(nt_wav-1)*r] = w
+        return source
+    return lambda: zero_phase_real_wavelet
+
+
+def estimate_zero_phase_wavelet(d, ntmax=-1, nt_wav=41):
+    # Estimate wavelet spectrum.
+    dwind = d[:ntmax, ...]
+    dwind = dwind * np.reshape(hann(dwind.shape[0]), [-1, 1])
+    nfft = int(2**np.ceil(np.log2(dwind.shape[0])))
+    wav_est_fft = np.mean(
+        np.abs(np.fft.fft(dwind, nfft, axis=0)),
+        axis=tuple(ii for ii in range(1, len(dwind.shape))),
+    )
+
+    wav_est = np.real(np.fft.ifft(wav_est_fft)[:nt_wav])
+    wav_est = np.concatenate((np.flipud(wav_est[1:]), wav_est), axis=0)
+    wav_est = wav_est * hann(wav_est.shape[0])
+    return wav_est
