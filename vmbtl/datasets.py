@@ -5,6 +5,7 @@ from os.path import abspath, join
 
 import numpy as np
 from scipy.signal import convolve, hann
+from scipy.interpolate import CubicSpline
 from GeoFlow.GeoDataset import GeoDataset
 from GeoFlow.EarthModel import MarineModel
 from GeoFlow.SeismicGenerator import Acquisition
@@ -197,8 +198,9 @@ def real_source_generator(self, d, nt_wav=41):
         t0 = int(real_tdelay / self.acquire.dt)
         w = estimate_zero_phase_wavelet(d, nt_wav=nt_wav)
         r = self.acquire.resampling
-        w = np.repeat(w, r)
-        source[t0-nt_wav*r:t0+(nt_wav-1)*r] = w
+        interpolator = CubicSpline(np.arange(nt_wav*2-1), w)
+        w = interpolator(np.arange((nt_wav*2-1)*r) / r)
+        source[t0-int((nt_wav-.5)*r):t0+int((nt_wav-.5)*r)] = w
         return source
     return lambda: zero_phase_real_wavelet
 
