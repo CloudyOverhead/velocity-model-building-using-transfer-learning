@@ -114,6 +114,7 @@ class USGS(Article2D):
         self.testsize = 1
 
         model.NX = NS*acquire.ds + acquire.gmax + 2*acquire.Npad
+        model.NZ = 2000
 
         dt = acquire.dt * acquire.resampling
         real_tdelay = 3 / 8
