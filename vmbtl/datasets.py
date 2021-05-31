@@ -133,7 +133,7 @@ def decorate_preprocess(self):
     # manually.
     self.skip_preprocess = True
 
-    def preprocess_real_data(data, labels):
+    def preprocess_real_data(data, labels, use_agc=True):
         if not self.skip_preprocess:
             data = data.reshape([3071, -1, 72])
             NT = int(self.acquire.NT / self.acquire.resampling)
@@ -144,25 +144,26 @@ def decorate_preprocess(self):
             data = data[:, :, :END_CMP]
 
             eps = np.finfo(np.float32).eps
-            agc_kernel = np.ones([21, 5, 1])
-            agc_kernel /= agc_kernel.size
-            pads = [[int(pad//2), int(pad//2)] for pad in agc_kernel.shape]
-            gain = convolve(
-                np.pad(data, pads, mode='symmetric')**2,
-                agc_kernel,
-                'valid',
-            )
-            gain[gain < eps] = eps
-            gain = 1 / np.sqrt(gain)
-            vmax = np.amax(data, axis=0)
-            first_arrival = np.argmax(data > .4*vmax[None], axis=0)
-            dt = self.acquire.dt * self.acquire.resampling
-            pad = int(1.5 * self.acquire.tdelay / dt)
-            mask = np.ones_like(data, dtype=bool)
-            for (i, j), trace_arrival in np.ndenumerate(first_arrival):
-                mask[:trace_arrival-pad, i, j] = False
-            data[~mask] = 0
-            data[mask] *= gain[mask]
+            if use_agc:
+                agc_kernel = np.ones([21, 5, 1])
+                agc_kernel /= agc_kernel.size
+                pads = [[int(pad//2), int(pad//2)] for pad in agc_kernel.shape]
+                gain = convolve(
+                    np.pad(data, pads, mode='symmetric')**2,
+                    agc_kernel,
+                    'valid',
+                )
+                gain[gain < eps] = eps
+                gain = 1 / np.sqrt(gain)
+                vmax = np.amax(data, axis=0)
+                first_arrival = np.argmax(data > .4*vmax[None], axis=0)
+                dt = self.acquire.dt * self.acquire.resampling
+                pad = int(1.5 * self.acquire.tdelay / dt)
+                mask = np.ones_like(data, dtype=bool)
+                for (i, j), trace_arrival in np.ndenumerate(first_arrival):
+                    mask[:trace_arrival-pad, i, j] = False
+                data[~mask] = 0
+                data[mask] *= gain[mask]
 
             trace_rms = np.sqrt(np.sum(data**2, axis=0, keepdims=True))
             data /= trace_rms + eps
