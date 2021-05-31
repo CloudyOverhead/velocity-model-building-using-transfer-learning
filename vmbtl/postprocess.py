@@ -620,14 +620,20 @@ def plot_losses(logdir_1d, params_1d, logdir_2d, params_2d, plot=True):
             del data[column]
     plt.figure(figsize=[3.33, 2.5])
     for column in LABEL_NAMES.keys():
+        iters = (np.arange(len(data[column]))+1) * params_1d.steps_per_epoch
         if column == 'loss':
             plt.plot(
-                data[column], label=LABEL_NAMES[column], zorder=100, lw=2.5,
+                iters,
+                data[column],
+                label=LABEL_NAMES[column],
+                zorder=100,
+                lw=2.5,
             )
         else:
-            plt.plot(data[column], label=LABEL_NAMES[column])
+            plt.plot(iters, data[column], label=LABEL_NAMES[column])
     limits = np.cumsum((0,) + epochs)
     limits[0] = 1
+    limits *= params_1d.steps_per_epoch
     colormaps = [plt.get_cmap('Blues'), plt.get_cmap('Oranges')]
     sample_colormaps = [
         np.linspace(.4, .8, n_stages)
