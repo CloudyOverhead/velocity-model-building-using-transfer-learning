@@ -674,8 +674,9 @@ def plot_real_data(args, dataset, plot=True):
     data_meta.acquire.singleshot = True
     vint_meta = dataset.outputs['vint']
     shotgather = inputs['shotgather']
-    # Trigger first preprocess skipping.
-    data_meta.preprocess(None, None)
+    if data_meta.skip_preprocess:
+        # Trigger first preprocess skipping.
+        data_meta.preprocess(None, None)
     shotgather = data_meta.preprocess(shotgather, None)
     shotgather = shotgather[..., 0]
 
