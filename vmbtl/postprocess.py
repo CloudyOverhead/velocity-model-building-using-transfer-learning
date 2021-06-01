@@ -749,7 +749,7 @@ def plot_real_stacks(dataset, inputs, preds, plot=True):
         stacked_usgs = [segy.trace[trid] for trid in range(segy.tracecount)]
         stacked_usgs = np.array(stacked_usgs)
         stacked_usgs = stacked_usgs.T
-    stacked_usgs = stacked_usgs[:, -2300:-160]
+    stacked_usgs = stacked_usgs[:, -2350:-160]
     stacked_usgs = stacked_usgs[:, ::-1]
     stacked_usgs = data_preprocess(stacked_usgs)
     stacked_usgs = np.expand_dims(stacked_usgs, axis=-1)
