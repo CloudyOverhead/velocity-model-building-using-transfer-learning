@@ -588,17 +588,17 @@ def plot_real_data(args, dataset, plot=True):
     preds = dataset.generator.read_predictions(filename, "EndResults")
     preds = {name: preds[name] for name in TOOUTPUTS}
 
-    plot_real_stacks(dataset, pretrained, preds, plot=plot)
-    plot_real_models(dataset, inputs, preds, plot=plot)
+    plot_real_models(dataset, pretrained, preds, plot=plot)
+    plot_real_stacks(dataset, inputs, preds, plot=plot)
 
 
 def plot_real_models(dataset, pretrained, preds, plot=True):
     fig, axs = plt.subplots(
         ncols=2,
         nrows=3,
-        figsize=[4.33, 7],
+        figsize=[4.33, 5],
         constrained_layout=False,
-        gridspec_kw={"width_ratios": [95, 5], "hspace": .3},
+        gridspec_kw={"width_ratios": [95, 5], "hspace": .3, "wspace": .05},
     )
     for ax in axs[1:, 1]:
         ax.remove()
@@ -629,9 +629,9 @@ def plot_real_models(dataset, pretrained, preds, plot=True):
 
     dh = dataset.model.dh
     TOP_VINT = 1500
-    start_depth = start_time * TOP_VINT
+    start_depth = (start_time+tdelay) / 2 * TOP_VINT
     crop_top_d = int(start_depth / dh)
-    END_DEPTH = 12500
+    END_DEPTH = 10000
     crop_bottom_d = int(END_DEPTH / dh)
 
     data_meta = deepcopy(dataset.inputs['shotgather'])
@@ -643,7 +643,7 @@ def plot_real_models(dataset, pretrained, preds, plot=True):
     pred_vdepth = vint_meta.postprocess(preds['vdepth'])
     pretrained_vint = gaussian_filter(pretrained_vint, [5, 15])
     pred_vint = gaussian_filter(pred_vint, [5, 15])
-    pred_vdepth = gaussian_filter(pred_vint, [5, 15])
+    pred_vdepth = gaussian_filter(pred_vdepth, [5, 15])
     pretrained_vint = pretrained_vint[crop_top:crop_bottom]
     pred_vint = pred_vint[crop_top:crop_bottom]
     pred_vdepth = pred_vdepth[crop_top_d:crop_bottom_d]
@@ -652,14 +652,16 @@ def plot_real_models(dataset, pretrained, preds, plot=True):
         pretrained_vint, axs=[axs[0]], vmin=1400, vmax=3500, cmap='jet',
     )
     vint_meta.plot(
-        pred_vint, axs=[axs[2]], vmin=1400, vmax=3500, cmap='jet',
+        pred_vint, axs=[axs[1]], vmin=1400, vmax=3500, cmap='jet',
     )
     vint_meta.plot(
         pred_vdepth, axs=[axs[2]], vmin=1400, vmax=3500, cmap='jet',
     )
 
     extent = [cmps.min()/1000, cmps.max()/1000, END_TIME, start_time]
-    extent_d = [cmps.min()/1000, cmps.max()/1000, END_DEPTH, start_depth]
+    extent_d = [
+        cmps.min()/1000, cmps.max()/1000, END_DEPTH/1000, start_depth/1000,
+    ]
 
     for i, ax in enumerate(axs[:-1]):
         ax.images[0].set_extent(extent)
@@ -709,7 +711,7 @@ def plot_real_stacks(dataset, inputs, preds, plot=True):
     fig, axs = plt.subplots(
         ncols=1,
         nrows=2,
-        figsize=[4.33, 7],
+        figsize=[4.33, 3],
         constrained_layout=False,
         gridspec_kw={"hspace": .3},
     )
