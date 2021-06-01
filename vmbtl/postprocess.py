@@ -752,20 +752,17 @@ def plot_real_stacks(dataset, inputs, preds, plot=True):
     stacked_usgs = stacked_usgs[:, -2350:-160]
     stacked_usgs = stacked_usgs[:, ::-1]
     stacked_usgs = data_preprocess(stacked_usgs)
-    stacked_usgs = np.expand_dims(stacked_usgs, axis=-1)
 
     print("Stacking.")
     pred_vrms = vint_meta.postprocess(preds['vrms'])
     pred_stacked = stack_2d(shotgather, times, offsets, pred_vrms)
-    pred_stacked *= times[:, None]**2
     pred_stacked = data_preprocess(pred_stacked)
-    pred_stacked = np.expand_dims(pred_stacked, axis=-1)
 
     pred_stacked = pred_stacked[crop_top:crop_bottom]
     stacked_usgs = stacked_usgs[crop_top:crop_bottom]
 
-    data_meta.plot(pred_stacked, axs=[axs[3]], vmin=0, clip=5E-2)
-    data_meta.plot(stacked_usgs, axs=[axs[4]], vmin=0, clip=1.5E-1)
+    data_meta.plot(pred_stacked, axs=[axs[0]], vmin=0, clip=2.5E-1)
+    data_meta.plot(stacked_usgs, axs=[axs[1]], vmin=0, clip=1.5E-1)
 
     extent = [cmps.min()/1000, cmps.max()/1000, END_TIME, start_time]
 
@@ -810,6 +807,7 @@ def data_preprocess(data):
     eps = np.finfo(np.float32).eps
     trace_rms = np.sqrt(np.sum(data**2, axis=0, keepdims=True))
     data /= trace_rms + eps
+    data = np.expand_dims(data, axis=-1)
     return data
 
 
