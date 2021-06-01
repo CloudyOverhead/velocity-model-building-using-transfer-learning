@@ -4,6 +4,7 @@ from argparse import ArgumentParser, Namespace
 from os import makedirs, listdir
 from os.path import join, exists, split
 from copy import deepcopy
+from datetime import datetime
 
 import segyio
 import numpy as np
@@ -133,6 +134,7 @@ def launch_inference(nn, params, dataset, logdir, gpus, savedir):
     logdirs = listdir(logdir)
     for i, current_logdir in enumerate(logdirs):
         print(f"Using NN {i+1} out of {len(logdirs)}.")
+        print(f"Started at {datetime.now()}.")
         current_logdir = join(logdir, current_logdir)
         current_savedir = f"{savedir}_{i}"
         current_args = Namespace(
@@ -150,6 +152,7 @@ def launch_inference(nn, params, dataset, logdir, gpus, savedir):
             eager=False,
         )
         global_main(current_args)
+    print(f"Finished at {datetime.now()}.")
 
     combine_predictions(dataset, logdir, savedir)
 
