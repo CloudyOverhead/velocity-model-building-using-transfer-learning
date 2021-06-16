@@ -58,7 +58,8 @@ class RCNN2DUnpackReal(RCNN2D):
             filename = data['filename'][0]
             qty_cmps = shotgather.shape[2]
             shotgather = self.split_data(shotgather)
-            batch_pad = int(shotgather.shape[0] % batch_size)
+            excess = int((shotgather.shape[0]-1) % batch_size) - 1
+            batch_pad = batch_size - excess
             pads = [[0, batch_pad], *[[0, 0]]*(shotgather.ndim-1)]
             shotgather = np.pad(shotgather, pads)
             shotgather = shotgather.reshape(
