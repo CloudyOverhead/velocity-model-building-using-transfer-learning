@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 from matplotlib.patches import Rectangle
+from matplotlib.colors import TABLEAU_COLORS
 from scipy.ndimage import gaussian_filter
 from skimage.metrics import structural_similarity as ssim
 from tensorflow.compat.v1.train import summary_iterator
@@ -37,6 +38,8 @@ plt.rcParams.update(
         'figure.dpi': 1200,
     }
 )
+
+TABLEAU_COLORS = [color[1] for color in TABLEAU_COLORS.items()]
 
 
 def main(args):
@@ -488,25 +491,34 @@ def plot_example(args, dataset, filename, figure_name, plot=True):
 
 
 def load_events(logdir):
-    events_path = [path for path in listdir(logdir) if "events" in path]
-    assert len(events_path) == 1
-    events_path = join(logdir, events_path[0])
-    data = pd.DataFrame([])
-    events = summary_iterator(events_path)
-    for event in events:
-        if hasattr(event, 'step'):
-            step = event.step
-            for value in event.summary.value:
-                column = value.tag
-                value = value.simple_value
-                data.loc[step, column] = value
-    return data
+    data = []
+    for i in listdir(logdir):
+        current_logdir = join(logdir, i)
+        events_path = [
+            path for path in listdir(current_logdir) if "events" in path
+        ]
+        assert len(events_path) == 1
+        events_path = join(current_logdir, events_path[0])
+        current_data = pd.DataFrame([])
+        events = summary_iterator(events_path)
+        for event in events:
+            if hasattr(event, 'step'):
+                step = event.step
+                for value in event.summary.value:
+                    column = value.tag
+                    value = value.simple_value
+                    current_data.loc[step, column] = np.log10(value)
+        data.append(current_data)
+    data = pd.concat(data)
+    by_index = data.groupby(data.index)
+    return by_index.mean(), by_index.std()
 
 
 def plot_losses(logdir_1d, params_1d, logdir_2d, params_2d, plot=True):
-    data_1d = load_events(join(logdir_1d, "0"))
-    data_2d = load_events(join(logdir_2d, "0"))
-    data = pd.concat([data_1d, data_2d], ignore_index=True)
+    mean_1d, std_1d = load_events(logdir_1d)
+    mean_2d, std_2d = load_events(logdir_2d)
+    mean = pd.concat([mean_1d, mean_2d], ignore_index=True)
+    std = pd.concat([std_1d, std_2d], ignore_index=True)
     qty_stages_1d = len(params_1d.loss_scales)
     qty_stages_2d = len(params_2d.loss_scales)
     epochs_1d = (params_1d.epochs,) * qty_stages_1d
@@ -520,23 +532,37 @@ def plot_losses(logdir_1d, params_1d, logdir_2d, params_2d, plot=True):
         'vint_loss': "$v_\\mathrm{int}(t, x)$",
         'vdepth_loss': "$v_\\mathrm{int}(z, x)$",
     }
-    data.columns = [column.split('/')[-1] for column in data.columns]
-    for column in data.columns:
+    mean.columns = [column.split('/')[-1] for column in mean.columns]
+    std.columns = [column.split('/')[-1] for column in std.columns]
+    for column in mean.columns:
         if column not in LABEL_NAMES.keys():
-            del data[column]
+            del mean[column]
+            del std[column]
     plt.figure(figsize=[3.33, 2.5])
-    for column in LABEL_NAMES.keys():
-        iters = (np.arange(len(data[column]))+1) * params_1d.steps_per_epoch
+    for i, column in enumerate(LABEL_NAMES.keys()):
+        iters = (np.arange(len(mean[column]))+1) * params_1d.steps_per_epoch
+        current_mean = mean[column].map(lambda x: 10**x)
         if column == 'loss':
             plt.plot(
                 iters,
-                data[column],
+                current_mean,
                 label=LABEL_NAMES[column],
                 zorder=100,
                 lw=2.5,
+                color=TABLEAU_COLORS[i],
             )
         else:
-            plt.plot(iters, data[column], label=LABEL_NAMES[column])
+            plt.plot(
+                iters,
+                current_mean,
+                label=LABEL_NAMES[column],
+                color=TABLEAU_COLORS[i],
+            )
+        upper = mean[column].add(std[column]).map(lambda x: 10**x)
+        lower = mean[column].sub(std[column]).map(lambda x: 10**x)
+        plt.fill_between(
+            iters, lower, upper, color=TABLEAU_COLORS[i], lw=0, alpha=.2,
+        )
     limits = np.cumsum((0,) + epochs)
     limits[0] = 1
     limits *= params_1d.steps_per_epoch
@@ -555,9 +581,9 @@ def plot_losses(logdir_1d, params_1d, logdir_2d, params_2d, plot=True):
         )
     plt.xlim([limits[0], limits[-1]])
     plt.semilogy()
-    vmax, vmin = data.values.max(), data.values.min()
-    diff = np.log10(vmax) - np.log10(vmin)
-    plt.ylim([10**(np.log10(vmin)-.1*diff), 10**(np.log10(vmax)+.1*diff)])
+    vmax, vmin = mean.values.max(), mean.values.min()
+    diff = vmax - vmin
+    plt.ylim([10**(vmin-.1*diff), 10**(vmax+.1*diff)])
     plt.xlabel("Iteration")
     plt.ylabel("Loss")
     plt.legend(
