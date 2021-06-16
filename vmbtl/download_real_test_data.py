@@ -274,7 +274,7 @@ if __name__ == "__main__":
                 save_file[label] = dummy_label
                 save_file[label+'_w'] = dummy_label
 
-    # Plot some shot gathers.
+    # Plot some CMP gathers.
     plot(data_cmp[:, :200])
     # Constant offset plot.
     plot(data_cmp[:, ::72])
