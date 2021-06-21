@@ -5,6 +5,9 @@ from os.path import abspath
 
 import numpy as np
 from scipy.signal import convolve
+from ModelGenerator import (
+    Sequence, Stratigraphy, Deformation, Property, Lithology,
+)
 from GeoFlow.GeoDataset import GeoDataset
 from GeoFlow.EarthModel import MarineModel
 from GeoFlow.SeismicGenerator import Acquisition
@@ -19,7 +22,7 @@ class Dataset(GeoDataset):
 
 class Article1D(Dataset):
     def set_dataset(self):
-        self.trainsize = 5000
+        self.trainsize = 20000
         self.validatesize = 0
         self.testsize = 10
 
@@ -27,14 +30,13 @@ class Article1D(Dataset):
         model.dh = 6.25
         model.NX = 692 * 2
         model.NZ = 752 * 2
-        model.layer_num_min = 48
         model.layer_dh_min = 20
-        model.layer_dh_max = 50
+        model.layer_num_min = None
         model.water_vmin = 1430
         model.water_vmax = 1560
-        model.water_dmin = .9 * model.water_vmin
-        model.water_dmax = 3.1 * model.water_vmax
-        model.vp_min = 1300.0
+        model.water_dmin = .5 * model.water_vmin
+        model.water_dmax = 3.5 * model.water_vmax
+        model.vp_min = 1400.0
         model.vp_max = 4000.0
 
         acquire = Acquisition(model=model)
@@ -51,15 +53,17 @@ class Article1D(Dataset):
         acquire.wavefuns = [0, 1]
         acquire.source_depth = (acquire.Npad+4) * model.dh
         acquire.receiver_depth = (acquire.Npad+4) * model.dh
-        acquire.tdelay = 3.0 / (acquire.peak_freq-acquire.df)
+        acquire.tdelay = 3 / 8
         acquire.singleshot = True
         acquire.configuration = 'inline'
 
         inputs = {ShotGather.name: ShotGather(model=model, acquire=acquire)}
-        outputs = {Reftime.name: Reftime(model=model, acquire=acquire),
-                   Vrms.name: Vrms(model=model, acquire=acquire),
-                   Vint.name: Vint(model=model, acquire=acquire),
-                   Vdepth.name: Vdepth(model=model, acquire=acquire)}
+        outputs = {
+            Reftime.name: Reftime(model=model, acquire=acquire),
+            Vrms.name: Vrms(model=model, acquire=acquire),
+            Vint.name: Vint(model=model, acquire=acquire),
+            Vdepth.name: Vdepth(model=model, acquire=acquire),
+        }
 
         for input in inputs.values():
             input.train_on_shots = True  # 1D shots are CMPs.
@@ -85,7 +89,7 @@ class Article2D(Article1D):
     def set_dataset(self):
         model, acquire, inputs, outputs = super().set_dataset()
 
-        self.trainsize = 500
+        self.trainsize = 2000
         self.validatesize = 0
         self.testsize = 100
 
@@ -134,7 +138,7 @@ def decorate_preprocess(self):
     # manually.
     self.skip_preprocess = True
 
-    def preprocess_real_data(data, labels, use_agc=True):
+    def preprocess_real_data(data, labels, use_agc=False):
         if not self.skip_preprocess:
             data = data.reshape([3071, -1, 72])
             NT = int(self.acquire.NT / self.acquire.resampling)
@@ -156,14 +160,15 @@ def decorate_preprocess(self):
                 )
                 gain[gain < eps] = eps
                 gain = 1 / np.sqrt(gain)
-                vmax = np.amax(data, axis=0)
-                first_arrival = np.argmax(data > .4*vmax[None], axis=0)
-                dt = self.acquire.dt * self.acquire.resampling
-                pad = int(1.5 * self.acquire.tdelay / dt)
-                mask = np.ones_like(data, dtype=bool)
-                for (i, j), trace_arrival in np.ndenumerate(first_arrival):
-                    mask[:trace_arrival-pad, i, j] = False
-                data[~mask] = 0
+            vmax = np.amax(data, axis=0)
+            first_arrival = np.argmax(data > .4*vmax[None], axis=0)
+            dt = self.acquire.dt * self.acquire.resampling
+            pad = int(1 / self.acquire.peak_freq / dt)
+            mask = np.ones_like(data, dtype=bool)
+            for (i, j), trace_arrival in np.ndenumerate(first_arrival):
+                mask[:trace_arrival-pad, i, j] = False
+            data[~mask] = 0
+            if use_agc:
                 data[mask] *= gain[mask]
 
             trace_rms = np.sqrt(np.sum(data**2, axis=0, keepdims=True))
@@ -178,3 +183,70 @@ def decorate_preprocess(self):
             self.skip_preprocess = False
             return data
     return preprocess_real_data
+
+
+class MarineModel(MarineModel):
+    def generate_model(self, *args, seed=None, **kwargs):
+        is_2d = self.dip_max > 0
+        self.layer_num_min = 5
+        if not is_2d:
+            if seed < 5000:
+                self.layer_num_min = 5
+            elif seed < 10000:
+                self.layer_num_min = 10
+            elif seed < 15000:
+                self.layer_num_min = 30
+            else:
+                self.layer_num_min = 50
+        else:
+            self.layer_num_min = 50
+        return super().generate_model(*args, seed=seed, **kwargs)
+
+    def build_stratigraphy(self):
+        self.thick0min = int(self.water_dmin/self.dh)
+        self.thick0max = int(self.water_dmax/self.dh)
+
+        vp = Property(
+            name="vp", vmin=self.water_vmin, vmax=self.water_vmax, dzmax=0,
+        )
+        vs = Property(name="vs", vmin=0, vmax=0)
+        rho = Property(name="rho", vmin=2000, vmax=2000)
+        water = Lithology(name='water', properties=[vp, vs, rho])
+        vp = Property(
+            name="vp",
+            vmin=self.vp_min,
+            vmax=self.vp_max,
+            texture=self.max_texture,
+            trend_min=self.vp_trend_min,
+            trend_max=self.vp_trend_max,
+            dzmax=1000,
+            filter_decrease=True,
+        )
+        roc = Lithology(name='roc', properties=[vp, vs, rho])
+        if self.amp_max > 0 and self.max_deform_nfreq > 0:
+            deform = Deformation(
+                max_deform_freq=self.max_deform_freq,
+                min_deform_freq=self.min_deform_freq,
+                amp_max=self.amp_max,
+                max_deform_nfreq=self.max_deform_nfreq,
+                prob_deform_change=self.prob_deform_change,
+            )
+        else:
+            deform = None
+        waterseq = Sequence(
+            lithologies=[water],
+            ordered=False,
+            thick_min=self.thick0min,
+            thick_max=self.thick0max,
+            nmin=1,
+        )
+        rocseq = Sequence(
+            lithologies=[roc],
+            ordered=False,
+            deform=deform,
+            accept_decrease=.3,
+        )
+        strati = Stratigraphy(sequences=[waterseq, rocseq])
+        properties = strati.properties()
+
+        return strati, properties
