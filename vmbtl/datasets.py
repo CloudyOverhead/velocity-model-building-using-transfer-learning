@@ -27,9 +27,8 @@ class Article1D(Dataset):
         model.dh = 6.25
         model.NX = 692 * 2
         model.NZ = 752 * 2
-        model.layer_num_min = 48
         model.layer_dh_min = 20
-        model.layer_dh_max = 50
+        model.layer_num_min = None
         model.water_vmin = 1430
         model.water_vmax = 1560
         model.water_dmin = .9 * model.water_vmin
@@ -178,3 +177,21 @@ def decorate_preprocess(self):
             self.skip_preprocess = False
             return data
     return preprocess_real_data
+
+
+class MarineModel(MarineModel):
+    def generate_model(self, *args, seed=None, **kwargs):
+        is_2d = self.dip_max > 0
+        self.layer_num_min = 5
+        if not is_2d:
+            if seed < 5000:
+                self.layer_num_min = 5
+            elif seed < 10000:
+                self.layer_num_min = 10
+            elif seed < 15000:
+                self.layer_num_min = 30
+            else:
+                self.layer_num_min = 50
+        else:
+            self.layer_num_min = 50
+        return super().generate_model(*args, seed=seed, **kwargs)
