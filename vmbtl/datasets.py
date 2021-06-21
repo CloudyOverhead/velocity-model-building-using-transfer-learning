@@ -19,7 +19,7 @@ class Dataset(GeoDataset):
 
 class Article1D(Dataset):
     def set_dataset(self):
-        self.trainsize = 5000
+        self.trainsize = 20000
         self.validatesize = 0
         self.testsize = 10
 
@@ -31,9 +31,9 @@ class Article1D(Dataset):
         model.layer_num_min = None
         model.water_vmin = 1430
         model.water_vmax = 1560
-        model.water_dmin = .9 * model.water_vmin
-        model.water_dmax = 3.1 * model.water_vmax
-        model.vp_min = 1300.0
+        model.water_dmin = .5 * model.water_vmin
+        model.water_dmax = 3.5 * model.water_vmax
+        model.vp_min = 1400.0
         model.vp_max = 4000.0
 
         acquire = Acquisition(model=model)
@@ -50,15 +50,17 @@ class Article1D(Dataset):
         acquire.wavefuns = [0, 1]
         acquire.source_depth = (acquire.Npad+4) * model.dh
         acquire.receiver_depth = (acquire.Npad+4) * model.dh
-        acquire.tdelay = 3.0 / (acquire.peak_freq-acquire.df)
+        acquire.tdelay = 3 / 8
         acquire.singleshot = True
         acquire.configuration = 'inline'
 
         inputs = {ShotGather.name: ShotGather(model=model, acquire=acquire)}
-        outputs = {Reftime.name: Reftime(model=model, acquire=acquire),
-                   Vrms.name: Vrms(model=model, acquire=acquire),
-                   Vint.name: Vint(model=model, acquire=acquire),
-                   Vdepth.name: Vdepth(model=model, acquire=acquire)}
+        outputs = {
+            Reftime.name: Reftime(model=model, acquire=acquire),
+            Vrms.name: Vrms(model=model, acquire=acquire),
+            Vint.name: Vint(model=model, acquire=acquire),
+            Vdepth.name: Vdepth(model=model, acquire=acquire),
+        }
 
         for input in inputs.values():
             input.train_on_shots = True  # 1D shots are CMPs.
@@ -84,7 +86,7 @@ class Article2D(Article1D):
     def set_dataset(self):
         model, acquire, inputs, outputs = super().set_dataset()
 
-        self.trainsize = 500
+        self.trainsize = 2000
         self.validatesize = 0
         self.testsize = 100
 
