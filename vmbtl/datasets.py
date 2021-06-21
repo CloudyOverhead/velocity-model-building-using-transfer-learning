@@ -5,6 +5,9 @@ from os.path import abspath
 
 import numpy as np
 from scipy.signal import convolve
+from ModelGenerator import (
+    Sequence, Stratigraphy, Deformation, Property, Lithology,
+)
 from GeoFlow.GeoDataset import GeoDataset
 from GeoFlow.EarthModel import MarineModel
 from GeoFlow.SeismicGenerator import Acquisition
@@ -197,3 +200,52 @@ class MarineModel(MarineModel):
         else:
             self.layer_num_min = 50
         return super().generate_model(*args, seed=seed, **kwargs)
+
+    def build_stratigraphy(self):
+        self.thick0min = int(self.water_dmin/self.dh)
+        self.thick0max = int(self.water_dmax/self.dh)
+
+        vp = Property(
+            name="vp", vmin=self.water_vmin, vmax=self.water_vmax, dzmax=0,
+        )
+        vs = Property(name="vs", vmin=0, vmax=0)
+        rho = Property(name="rho", vmin=2000, vmax=2000)
+        water = Lithology(name='water', properties=[vp, vs, rho])
+        vp = Property(
+            name="vp",
+            vmin=self.vp_min,
+            vmax=self.vp_max,
+            texture=self.max_texture,
+            trend_min=self.vp_trend_min,
+            trend_max=self.vp_trend_max,
+            dzmax=1000,
+            filter_decrease=True,
+        )
+        roc = Lithology(name='roc', properties=[vp, vs, rho])
+        if self.amp_max > 0 and self.max_deform_nfreq > 0:
+            deform = Deformation(
+                max_deform_freq=self.max_deform_freq,
+                min_deform_freq=self.min_deform_freq,
+                amp_max=self.amp_max,
+                max_deform_nfreq=self.max_deform_nfreq,
+                prob_deform_change=self.prob_deform_change,
+            )
+        else:
+            deform = None
+        waterseq = Sequence(
+            lithologies=[water],
+            ordered=False,
+            thick_min=self.thick0min,
+            thick_max=self.thick0max,
+            nmin=1,
+        )
+        rocseq = Sequence(
+            lithologies=[roc],
+            ordered=False,
+            deform=deform,
+            accept_decrease=.3,
+        )
+        strati = Stratigraphy(sequences=[waterseq, rocseq])
+        properties = strati.properties()
+
+        return strati, properties
