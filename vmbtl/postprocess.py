@@ -892,6 +892,10 @@ def plot_semblance(dataset, plot=True):
         sharey=True,
         gridspec_kw={'wspace': .01},
     )
+    TITLES = {
+        'vrms': "$v_\\mathrm{RMS}(t, x)$",
+        'vint': "$v_\\mathrm{int}(t, x)$",
+    }
     for i, cmp in enumerate([250, 1000, 1750]):
         temp_shotgather = shotgather[..., cmp, 0]
         # temp_shotgather *= 1 / np.sqrt(offsets[None, :])
@@ -920,7 +924,9 @@ def plot_semblance(dataset, plot=True):
         for color, pred_name in zip(TABLEAU_COLORS, ['vrms', 'vint']):
             pred = preds[pred_name][:, cmp] / 1000
             std = preds_std[pred_name][:, cmp] / 1000
-            axs[i, 1].plot(pred, times, lw=.5, color=color)
+            axs[i, 1].plot(
+                pred, times, lw=.5, color=color, label=TITLES[pred_name],
+            )
             axs[i, 1].fill_betweenx(
                 times,
                 pred-std,
@@ -956,13 +962,19 @@ def plot_semblance(dataset, plot=True):
     for ax in axs[:, 0]:
         ax.set_ylabel("$t$ (s)")
 
-    for ax, letter in zip(axs.flatten(), range(ord('a'), ord('f')+1)):
+    for ax, letter in zip(axs.T.flatten(), range(ord('a'), ord('f')+1)):
         letter = f"({chr(letter)})"
         plt.sca(ax)
         x0, _ = plt.xlim()
         y1, y0 = plt.ylim()
         height = y1 - y0
         plt.text(x0, y0-.02*height, letter, va='bottom')
+
+    axs[0, 1].legend(
+        loc='center right',
+        bbox_to_anchor=(1.0, 1.0),
+        handlelength=.2,
+    )
 
     plt.savefig(join(FIGURES_DIR, "semblance.pdf"), bbox_inches="tight")
     if plot:
