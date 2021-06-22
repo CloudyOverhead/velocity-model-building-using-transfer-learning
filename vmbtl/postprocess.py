@@ -16,7 +16,7 @@ from scipy.ndimage import gaussian_filter
 from skimage.metrics import structural_similarity as ssim
 from tensorflow.compat.v1.train import summary_iterator
 from GeoFlow.__main__ import int_or_list
-from GeoFlow.SeismicUtilities import sortcmp, stack
+from GeoFlow.SeismicUtilities import sortcmp, stack, semblance_gather
 
 from vmbtl.__main__ import main as global_main
 from vmbtl.architecture import (
@@ -111,6 +111,7 @@ def main(args):
         dataset=dataset_real,
         plot=args.plot,
     )
+    plot_semblance(dataset_real, plot=args.plot)
 
 
 def launch_both_inferences(args, nn, dataset):
@@ -825,6 +826,145 @@ def plot_real_stacks(dataset, inputs, preds, plot=True):
         plt.text(x0, y0-.02*height, letter, va='bottom')
 
     plt.savefig(join(FIGURES_DIR, "real_stacks.pdf"), bbox_inches="tight")
+    if plot:
+        plt.gcf().set_dpi(200)
+        plt.show()
+    else:
+        plt.clf()
+
+
+def plot_semblance(dataset, plot=True):
+    filename = join(dataset.basepath, dataset.name, "test", "example_1")
+    inputs, _, _ = dataset.generator.read(filename)
+    data_meta = deepcopy(dataset.inputs['shotgather'])
+    data_meta.acquire.singleshot = True
+    shotgather = inputs['shotgather']
+    try:
+        data_meta.preprocess(None, None)
+    except AttributeError:
+        pass
+    shotgather = data_meta.preprocess(shotgather, None)
+
+    filename = dataset.files["test"][0]
+    preds = dataset.generator.read_predictions(filename, "EndResults")
+    preds = {name: preds[name] for name in TOOUTPUTS}
+    preds_std = dataset.generator.read_predictions(filename, "EndResults_std")
+    preds_std = {name: preds_std[name] for name in TOOUTPUTS}
+    for key, value in preds.items():
+        value = dataset.outputs[key].postprocess(value)
+        preds[key] = value
+    for key, value in preds_std.items():
+        vmin, vmax = dataset.model.properties["vp"]
+        preds_std[key] = value * (vmax-vmin)
+
+    resampling = dataset.acquire.resampling
+    dt = dataset.acquire.dt * resampling
+    tdelay = dataset.acquire.tdelay
+    nt = dataset.acquire.NT
+    times = np.arange(nt//resampling)*dt - tdelay
+    offsets = np.arange(
+        dataset.acquire.gmin,
+        dataset.acquire.gmax,
+        dataset.acquire.dg,
+        dtype=float,
+    )
+    offsets *= dataset.model.dh
+    velocities = np.arange(1300, 3500, 50)
+
+    extent_gather = [
+        offsets.min() / 1000,
+        offsets.max() / 1000,
+        times.max(),
+        times.min(),
+    ]
+    extent_semblance = [
+        velocities.min() / 1000,
+        velocities.max() / 1000,
+        times.max(),
+        times.min(),
+    ]
+
+    fig, axs = plt.subplots(
+        nrows=3,
+        ncols=2,
+        figsize=[3.33, 8],
+        sharex='col',
+        sharey=True,
+        gridspec_kw={'wspace': .01},
+    )
+    for i, cmp in enumerate([250, 1000, 1750]):
+        temp_shotgather = shotgather[..., cmp, 0]
+        # temp_shotgather *= 1 / np.sqrt(offsets[None, :])
+        temp_shotgather *= times[:, None]**2
+        temp_shotgather /= np.amax(temp_shotgather)
+        vmax = 5E-2
+        axs[i, 0].imshow(
+            temp_shotgather,
+            aspect='auto',
+            cmap='Greys',
+            extent=extent_gather,
+            vmin=0,
+            vmax=vmax,
+        )
+
+        semblance = semblance_gather(
+            temp_shotgather, times, offsets, velocities,
+        )
+        axs[i, 1].imshow(
+            semblance,
+            aspect='auto',
+            cmap='Greys',
+            extent=extent_semblance,
+            alpha=.8,
+        )
+        for color, pred_name in zip(TABLEAU_COLORS, ['vrms', 'vint']):
+            pred = preds[pred_name][:, cmp] / 1000
+            std = preds_std[pred_name][:, cmp] / 1000
+            axs[i, 1].plot(pred, np.arange(len(pred)), lw=2, color=color)
+            axs[i, 1].fill_betweenx(
+                np.arange(len(pred)),
+                pred-std,
+                pred+std,
+                color=color,
+                lw=0,
+                alpha=.4,
+            )
+        axs[i, 1].set_xlim([velocities.min() / 1000, velocities.max() / 1000])
+
+    for ax in axs.flatten():
+        plt.sca(ax)
+        plt.minorticks_on()
+        # plt.grid(True, which='major', c='tab:red', alpha=.4)
+        # plt.grid(True, which='minor', c='tab:red', alpha=.4)
+
+    for ax in axs.flatten():
+        ax.tick_params(which='minor', length=2)
+        ax.minorticks_on()
+
+    start_idx = np.nonzero(preds['vint'][:, 1750] > 2000)[0][0] - 50
+    start_time = times[start_idx]
+    END_TIME = 10
+    for ax in axs.flatten():
+        ax.set_ylim([start_time, END_TIME])
+
+    for ax in axs[:, 0]:
+        ax.invert_xaxis()
+        ax.invert_yaxis()
+
+    axs[-1, 0].set_xlabel("$h$ (km)")
+    axs[-1, 1].set_xlabel("Velocity (km/s)")
+    for ax in axs[:, 0]:
+        ax.set_ylabel("$t$ (s)")
+
+    for ax, letter in zip(axs.flatten(), range(ord('a'), ord('f')+1)):
+        letter = f"({chr(letter)})"
+        plt.sca(ax)
+        x0, _ = plt.xlim()
+        y1, y0 = plt.ylim()
+        height = y1 - y0
+        plt.text(x0, y0-.02*height, letter, va='bottom')
+
+    plt.savefig(join(FIGURES_DIR, "semblance.pdf"), bbox_inches="tight")
     if plot:
         plt.gcf().set_dpi(200)
         plt.show()
