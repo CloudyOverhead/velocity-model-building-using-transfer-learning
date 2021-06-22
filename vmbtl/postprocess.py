@@ -920,9 +920,9 @@ def plot_semblance(dataset, plot=True):
         for color, pred_name in zip(TABLEAU_COLORS, ['vrms', 'vint']):
             pred = preds[pred_name][:, cmp] / 1000
             std = preds_std[pred_name][:, cmp] / 1000
-            axs[i, 1].plot(pred, np.arange(len(pred)), lw=2, color=color)
+            axs[i, 1].plot(pred, times, lw=.5, color=color)
             axs[i, 1].fill_betweenx(
-                np.arange(len(pred)),
+                times,
                 pred-std,
                 pred+std,
                 color=color,
