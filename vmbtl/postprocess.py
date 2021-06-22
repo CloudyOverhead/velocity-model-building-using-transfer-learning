@@ -89,7 +89,6 @@ def main(args):
         idx = np.argwhere(score == similarities)[0, 0]
         print(f"SSIM {percentile}th percentile:", score)
         plot_example(
-            args,
             dataset=dataset,
             filename=dataset.files["test"][idx],
             figure_name=f"results_{percentile}th_percentile.pdf",
@@ -109,7 +108,6 @@ def main(args):
         plot=args.plot,
     )
     plot_real_data(
-        args,
         dataset=dataset_real,
         plot=args.plot,
     )
@@ -240,7 +238,7 @@ def compare_preds(dataset, savedir):
     return all_inputs, all_labels, all_weights, all_preds, similarities
 
 
-def plot_example(args, dataset, filename, figure_name, plot=True):
+def plot_example(dataset, filename, figure_name, plot=True):
     inputs, labels, weights, filename = dataset.get_example(
         filename=filename,
         phase='test',
@@ -605,7 +603,7 @@ def plot_losses(logdir_1d, params_1d, logdir_2d, params_2d, plot=True):
         plt.clf()
 
 
-def plot_real_data(args, dataset, plot=True):
+def plot_real_data(dataset, plot=True):
     filename = join(dataset.basepath, dataset.name, "test", "example_1")
     inputs, outputs, _ = dataset.generator.read(filename)
 
