@@ -940,7 +940,7 @@ def plot_real_stacks(dataset, inputs, preds, plot=True):
     if data_meta.skip_preprocess:
         # Trigger first preprocess skipping.
         data_meta.preprocess(None, None)
-    shotgather = data_meta.preprocess(shotgather, None)
+    shotgather = data_meta.preprocess(shotgather, None, use_agc=False)
     shotgather = shotgather[..., 0]
 
     stacked_filepath = join(dataset.basepath, dataset.name, "CSDS32_1.SGY")
@@ -954,13 +954,14 @@ def plot_real_stacks(dataset, inputs, preds, plot=True):
 
     print("Stacking.")
     pred_vrms = vint_meta.postprocess(preds['vrms'])
+    shotgather *= times[:, None, None]**2
     pred_stacked = stack_2d(shotgather, times, offsets, pred_vrms)
     pred_stacked = data_preprocess(pred_stacked)
 
     pred_stacked = pred_stacked[crop_top:crop_bottom]
     stacked_usgs = stacked_usgs[crop_top:crop_bottom]
 
-    data_meta.plot(pred_stacked, axs=[axs[0]], vmin=0, clip=2.5E-1)
+    data_meta.plot(pred_stacked, axs=[axs[0]], vmin=0, clip=8E-2)
     data_meta.plot(stacked_usgs, axs=[axs[1]], vmin=0, clip=1.5E-1)
 
     extent = [cmps.min()/1000, cmps.max()/1000, END_TIME, start_time]
