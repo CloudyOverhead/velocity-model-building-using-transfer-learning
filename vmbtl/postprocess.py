@@ -513,6 +513,165 @@ def load_events(logdir):
     return by_index.mean(), by_index.std()
 
 
+def plot_ensemble(dataset, output_name, filename, plot):
+    fig, axs = plt.subplots(
+        nrows=2,
+        ncols=4,
+        figsize=[6.5, 3.33],
+        constrained_layout=False,
+        gridspec_kw={"width_ratios": [*(1 for _ in range(3)), .2]},
+    )
+    cax_std = axs[0, -1]
+    cax = axs[1, -1]
+    axs = axs[:, :-1]
+
+    meta = dataset.outputs[output_name]
+
+    _, labels, weights, _ = dataset.get_example(
+        filename=filename,
+        phase='test',
+        toinputs=TOINPUTS,
+        tooutputs=TOOUTPUTS,
+    )
+    label = labels[output_name]
+    weight = weights[output_name]
+
+    ensemble = []
+    savedirs = [
+        dir for dir in listdir(dataset.datatest) if "EndResults_" in dir
+    ]
+    for savedir in savedirs:
+        preds = dataset.generator.read_predictions(filename, savedir)
+        ensemble.append(preds[output_name])
+    mean = dataset.generator.read_predictions(filename, "EndResults")
+    mean = mean[output_name]
+    std = dataset.generator.read_predictions(filename, "EndResults_std")
+    std = std[output_name]
+
+    similarities = np.array([])
+    for pred in ensemble:
+        similarity = ssim(mean*weight, pred*weight)
+        similarities = np.append(similarities, similarity)
+
+    ref = labels['ref']
+    crop_top = int(np.nonzero(ref.astype(bool).any(axis=1))[0][0] * .95)
+    dh = dataset.model.dh
+    dt = dataset.acquire.dt * dataset.acquire.resampling
+    vmin, vmax = dataset.model.properties['vp']
+    diff = vmax - vmin
+    water_v = float(labels['vint'][0, 0])*diff + vmin
+    tdelay = dataset.acquire.tdelay
+    if output_name == 'vdepth':
+        crop_top = int((crop_top-tdelay/dt)*dt/2*water_v/dh)
+        mask = weights['vdepth']
+        crop_bottom = int(np.nonzero((~mask.astype(bool)).all(axis=1))[0][0])
+    else:
+        crop_bottom = None
+    for i, pred in enumerate(ensemble):
+        ensemble[i] = pred[crop_top:crop_bottom]
+    label = label[crop_top:crop_bottom]
+    std = std[crop_top:crop_bottom]
+    weight = weight[crop_top:crop_bottom]
+
+    src_pos, rec_pos = dataset.acquire.set_rec_src()
+    _, cmps = sortcmp(None, src_pos, rec_pos)
+    cmps /= 1000
+    if output_name == 'vdepth':
+        dh = dataset.model.dh
+        src_rec_depth = dataset.acquire.source_depth
+        start = crop_top*dh + src_rec_depth
+        start /= 1000
+        end = (len(labels['vdepth'])-1)*dh + start
+        end /= 1000
+    else:
+        tdelay = dataset.acquire.tdelay
+        start = crop_top*dt - tdelay
+        end = (len(label)-1)*dt + start
+
+    far = np.argsort(similarities)[::-1]
+    closest = np.argmax(similarities)
+    arrays = np.array(
+        [
+            [label, ensemble[closest], std],
+            [ensemble[i] for i in far[:3]],
+        ]
+    )
+    for i, (array, ax) in enumerate(
+        zip(arrays.reshape([-1, *label.shape]), axs.flatten())
+    ):
+        if i != 2:
+            array = meta.postprocess(array)
+            cmap = 'inferno'
+            vmin, vmax = None, None
+        else:
+            vmin, vmax = dataset.model.properties["vp"]
+            array = array * (vmax-vmin)
+            vmin, vmax = 0, 1000
+            cmap = 'afmhot_r'
+        meta.plot(
+            array,
+            weights=weight,
+            axs=[ax],
+            ims=[None],
+            vmin=vmin,
+            vmax=vmax,
+            cmap=cmap
+        )
+
+    for ax in axs.flatten():
+        ax.images[0].set_extent([cmps.min(), cmps.max(), end, start])
+    for ax in axs.flatten():
+        ax.tick_params(which='minor', length=2)
+        ax.minorticks_on()
+
+    for ax in axs.flatten():
+        ax.set_title("")
+        if ax.images:
+            cbar = ax.images[-1].colorbar
+            if cbar is not None:
+                cbar.remove()
+
+    for ax in axs[:, 0]:
+        if output_name != 'vdepth':
+            ax.set_ylabel("$t$ (s)")
+        else:
+            ax.set_ylabel("$z$ (km)")
+    for ax in axs[:, 1:].flatten():
+        ax.set_yticklabels([])
+    for ax in axs[-1, :]:
+        ax.set_xlabel("$x$ (km)")
+    for ax in axs[:-1, :].flatten():
+        ax.set_xticklabels([])
+
+    cbar = plt.colorbar(axs[0, -1].images[0], cax=cax_std)
+    cbar.ax.set_ylabel("Standard deviation\n(km/s)")
+    cbar.set_ticks(np.arange(0, 1000, 300))
+    cbar.set_ticklabels(np.arange(0, 1, .3))
+
+    cbar = plt.colorbar(axs[0, 0].images[0], cax=cax)
+    cbar.ax.set_ylabel("Velocity\n(km/s)")
+    cbar.set_ticks(range(2000, 5000, 1000))
+    cbar.set_ticklabels(range(2, 5, 1))
+
+    for ax, letter in zip(axs.flatten(), range(ord('a'), ord('g')+1)):
+        letter = f"({chr(letter)})"
+        plt.sca(ax)
+        x0, _ = plt.xlim()
+        y1, y0 = plt.ylim()
+        height = y1 - y0
+        plt.text(x0, y0-.02*height, letter, va='bottom')
+
+    plt.savefig(
+        join(FIGURES_DIR, f"ensemble_{output_name}.pdf"),
+        bbox_inches="tight",
+    )
+    if plot:
+        plt.gcf().set_dpi(200)
+        plt.show()
+    else:
+        plt.clf()
+
+
 def plot_losses(logdir_1d, params_1d, logdir_2d, params_2d, plot=True):
     mean_1d, std_1d = load_events(logdir_1d)
     mean_2d, std_2d = load_events(logdir_2d)
