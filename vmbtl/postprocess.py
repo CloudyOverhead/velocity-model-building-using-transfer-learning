@@ -765,12 +765,22 @@ def plot_losses(logdir_1d, params_1d, logdir_2d, params_2d, plot=True):
 
 def plot_real_data(dataset, plot=True):
     filename = join(dataset.basepath, dataset.name, "test", "example_1")
-    inputs, outputs, _ = dataset.generator.read(filename)
+    inputs, _, _ = dataset.generator.read(filename)
 
     pretrained = dataset.generator.read_predictions(filename, "Pretraining")
     pretrained = {name: pretrained[name] for name in TOOUTPUTS}
     preds = dataset.generator.read_predictions(filename, "EndResults")
     preds = {name: preds[name] for name in TOOUTPUTS}
+    nt = inputs['shotgather'].shape[0]
+    TARGET_NT = 3071
+    pad = TARGET_NT - nt
+    for name, input in inputs.items():
+        inputs[name] = np.pad(input, [[pad, 0], [0, 0]])
+    for outputs in [pretrained, preds]:
+        for name, output in outputs.items():
+            outputs[name] = np.pad(
+                output, [[pad, 0], [0, 0]], constant_values=output[100, 1000],
+            )
 
     plot_real_models(dataset, pretrained, preds, plot=plot)
     plot_real_stacks(dataset, inputs, preds, plot=plot)
