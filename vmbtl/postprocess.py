@@ -843,13 +843,13 @@ def plot_real_models(dataset, pretrained, preds, plot=True):
     pred_vdepth = pred_vdepth[crop_top_d:crop_bottom_d]
 
     vint_meta.plot(
-        pretrained_vint, axs=[axs[0]], vmin=1400, vmax=3500, cmap='jet',
+        pretrained_vint, axs=[axs[0]], vmin=1400, vmax=3100, cmap='jet',
     )
     vint_meta.plot(
-        pred_vint, axs=[axs[1]], vmin=1400, vmax=3500, cmap='jet',
+        pred_vint, axs=[axs[1]], vmin=1400, vmax=3100, cmap='jet',
     )
     vint_meta.plot(
-        pred_vdepth, axs=[axs[2]], vmin=1400, vmax=3500, cmap='jet',
+        pred_vdepth, axs=[axs[2]], vmin=1400, vmax=3100, cmap='jet',
     )
 
     extent = [cmps.min()/1000, cmps.max()/1000, END_TIME, start_time]
