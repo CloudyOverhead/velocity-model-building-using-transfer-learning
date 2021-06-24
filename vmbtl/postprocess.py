@@ -1084,7 +1084,7 @@ def plot_semblance(dataset, plot=True):
         figsize=[3.33, 8],
         sharex='col',
         sharey=True,
-        gridspec_kw={'wspace': .01},
+        gridspec_kw={'wspace': .05},
     )
     TITLES = {
         'vrms': "$v_\\mathrm{RMS}(t, x)$",
@@ -1092,8 +1092,7 @@ def plot_semblance(dataset, plot=True):
     }
     for i, cmp in enumerate([250, 1000, 1750]):
         temp_shotgather = shotgather[..., cmp, 0]
-        # temp_shotgather *= 1 / np.sqrt(offsets[None, :])
-        temp_shotgather *= times[:, None]**2
+        temp_shotgather *= times[:, None]
         temp_shotgather /= np.amax(temp_shotgather)
         vmax = 5E-2
         axs[i, 0].imshow(
@@ -1167,7 +1166,6 @@ def plot_semblance(dataset, plot=True):
     axs[0, 1].legend(
         loc='center right',
         bbox_to_anchor=(1.0, 1.0),
-        handlelength=.2,
     )
 
     plt.savefig(join(FIGURES_DIR, "semblance.pdf"), bbox_inches="tight")
