@@ -1303,7 +1303,7 @@ def plot_ensemble_real(dataset, output_name, plot):
     cbar.set_ticklabels(range(2, 5, 1))
 
     cbar = plt.colorbar(axs[1, 0].images[0], cax=cax_std)
-    cbar.ax.set_ylabel("Standard deviation\n(km/s)")
+    cbar.ax.set_ylabel("Standard\ndeviation\n(km/s)")
     cbar.set_ticks(np.arange(0, 1000, 300))
     cbar.set_ticklabels(np.arange(0, 1, .3))
 
