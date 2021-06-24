@@ -1154,6 +1154,156 @@ def plot_semblance(dataset, plot=True):
         plt.clf()
 
 
+def plot_ensemble_real(dataset, output_name, plot):
+    filename = dataset.files["test"][0]
+    fig, axs = plt.subplots(
+        nrows=5,
+        ncols=2,
+        figsize=[3.33, 5],
+        constrained_layout=False,
+        gridspec_kw={"width_ratios": [1, .1], "hspace": .3},
+    )
+    cax = axs[0, -1]
+    cax_std = axs[1, -1]
+    for ax in axs[2:, -1]:
+        ax.remove()
+    axs = axs[:, :-1]
+
+    meta = dataset.outputs[output_name]
+
+    ensemble = []
+    savedirs = [
+        dir for dir in listdir(dataset.datatest) if "EndResults_" in dir
+    ]
+    for savedir in savedirs:
+        preds = dataset.generator.read_predictions(filename, savedir)
+        ensemble.append(preds[output_name])
+    mean = dataset.generator.read_predictions(filename, "EndResults")
+    mean = mean[output_name]
+    std = dataset.generator.read_predictions(filename, "EndResults_std")
+    std = std[output_name]
+
+    similarities = np.array([])
+    for pred in ensemble:
+        similarity = ssim(mean, pred)
+        similarities = np.append(similarities, similarity)
+
+    ref = preds['ref'] > .2
+    crop_top = int(np.nonzero(ref.any(axis=1))[0][0] * .95)
+    dt = dataset.acquire.dt * dataset.acquire.resampling
+    tdelay = dataset.acquire.tdelay
+    start = crop_top*dt - tdelay
+
+    if output_name == 'vdepth':
+        dh = dataset.model.dh
+        TOP_VINT = 1500
+        start = (start+tdelay) / 2 * TOP_VINT
+        crop_top = int(start / dh)
+        end = 10000
+        crop_bottom = int(end / dh)
+    else:
+        end = 10
+        crop_bottom = int((end+tdelay) / dt)
+    for i, pred in enumerate(ensemble):
+        ensemble[i] = pred[crop_top:crop_bottom]
+    std = std[crop_top:crop_bottom]
+
+    src_pos, rec_pos = dataset.acquire.set_rec_src()
+    _, cmps = sortcmp(None, src_pos, rec_pos)
+    cmps /= 1000
+    if output_name == 'vdepth':
+        dh = dataset.model.dh
+        src_rec_depth = dataset.acquire.source_depth
+        start = crop_top*dh + src_rec_depth
+        start /= 1000
+        end = (len(ensemble[0])-1)*dh + start
+        end /= 1000
+    else:
+        tdelay = dataset.acquire.tdelay
+        start = crop_top*dt - tdelay
+        end = (len(ensemble[0])-1)*dt + start
+
+    far = np.argsort(similarities)
+    closest = np.argmax(similarities)
+    arrays = np.array(
+        [ensemble[closest], std, *[ensemble[i] for i in far[:3]]]
+    )
+    for i, (array, ax) in enumerate(
+        zip(arrays.reshape([-1, *ensemble[0].shape]), axs.flatten())
+    ):
+        if i != 1:
+            array = meta.postprocess(array)
+            cmap = 'jet'
+            vmin, vmax = 1400, 3100
+        else:
+            vmin, vmax = dataset.model.properties["vp"]
+            array = array * (vmax-vmin)
+            vmin, vmax = 0, 1000
+            cmap = 'afmhot_r'
+        array = gaussian_filter(array, [5, 15])
+        meta.plot(
+            array,
+            axs=[ax],
+            ims=[None],
+            vmin=vmin,
+            vmax=vmax,
+            cmap=cmap
+        )
+
+    for ax in axs.flatten():
+        ax.images[0].set_extent([cmps.min(), cmps.max(), end, start])
+    for ax in axs.flatten():
+        ax.tick_params(which='minor', length=2)
+        ax.minorticks_on()
+
+    for ax in axs.flatten():
+        ax.set_title("")
+        if ax.images:
+            cbar = ax.images[-1].colorbar
+            if cbar is not None:
+                cbar.remove()
+
+    for ax in axs[:, 0]:
+        if output_name != 'vdepth':
+            ax.set_ylabel("$t$ (s)")
+        else:
+            ax.set_ylabel("$z$ (km)")
+    for ax in axs[:, 1:].flatten():
+        ax.set_yticklabels([])
+    for ax in axs[-1, :]:
+        ax.set_xlabel("$x$ (km)")
+    for ax in axs[:-1, :].flatten():
+        ax.set_xticklabels([])
+
+    cbar = plt.colorbar(axs[0, 0].images[0], cax=cax)
+    cbar.ax.set_ylabel("Velocity\n(km/s)")
+    cbar.set_ticks(range(2000, 5000, 1000))
+    cbar.set_ticklabels(range(2, 5, 1))
+
+    cbar = plt.colorbar(axs[1, 0].images[0], cax=cax_std)
+    cbar.ax.set_ylabel("Standard deviation\n(km/s)")
+    cbar.set_ticks(np.arange(0, 1000, 300))
+    cbar.set_ticklabels(np.arange(0, 1, .3))
+
+    for ax, letter in zip(axs.flatten(), range(ord('a'), ord('g')+1)):
+        letter = f"({chr(letter)})"
+        plt.sca(ax)
+        x0, _ = plt.xlim()
+        y1, y0 = plt.ylim()
+        height = y1 - y0
+        plt.text(x0, y0-.02*height, letter, va='bottom')
+
+    plt.savefig(
+        join(FIGURES_DIR, f"ensemble_{output_name}_real.pdf"),
+        bbox_inches="tight",
+    )
+    if plot:
+        plt.gcf().set_dpi(200)
+        plt.show()
+    else:
+        plt.clf()
+
+
 def data_preprocess(data):
     eps = np.finfo(np.float32).eps
     trace_rms = np.sqrt(np.sum(data**2, axis=0, keepdims=True))
