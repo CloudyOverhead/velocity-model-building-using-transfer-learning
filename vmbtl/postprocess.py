@@ -612,7 +612,7 @@ def plot_ensemble(dataset, output_name, filename, plot):
         start = crop_top*dt - tdelay
         end = (len(label)-1)*dt + start
 
-    far = np.argsort(similarities)[::-1]
+    far = np.argsort(similarities)
     closest = np.argmax(similarities)
     arrays = np.array(
         [
@@ -668,7 +668,7 @@ def plot_ensemble(dataset, output_name, filename, plot):
         ax.set_xticklabels([])
 
     cbar = plt.colorbar(axs[0, -1].images[0], cax=cax_std)
-    cbar.ax.set_ylabel("Standard deviation\n(km/s)")
+    cbar.ax.set_ylabel("Standard\ndeviation\n(km/s)")
     cbar.set_ticks(np.arange(0, 1000, 300))
     cbar.set_ticklabels(np.arange(0, 1, .3))
 
