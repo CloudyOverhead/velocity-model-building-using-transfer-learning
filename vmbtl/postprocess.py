@@ -252,8 +252,14 @@ def plot_example(dataset, filename, figure_name, plot=True):
 
     pretrained = dataset.generator.read_predictions(filename, "Pretraining")
     pretrained = {name: pretrained[name] for name in TOOUTPUTS}
+    pretrained_std = dataset.generator.read_predictions(
+        filename, "Pretraining_std",
+    )
     preds = dataset.generator.read_predictions(filename, "EndResults")
     preds = {name: preds[name] for name in TOOUTPUTS}
+    preds_std = dataset.generator.read_predictions(
+        filename, "EndResults_std",
+    )
     cols = [inputs, pretrained, preds, labels]
 
     ref = labels['ref']
@@ -267,7 +273,7 @@ def plot_example(dataset, filename, figure_name, plot=True):
     crop_top_depth = int((crop_top-tdelay/dt)*dt/2*water_v/dh)
     mask = weights['vdepth']
     crop_bottom_depth = int(np.nonzero((~mask.astype(bool)).all(axis=1))[0][0])
-    for col in [*cols, weights]:
+    for col in [*cols, weights, pretrained_std, preds_std]:
         for row_name, row in col.items():
             if row_name != 'vdepth':
                 col[row_name] = row[crop_top:]
@@ -374,21 +380,37 @@ def plot_example(dataset, filename, figure_name, plot=True):
     START_AX_IDX = [3, 4, 5]
     LINE_LABELS = ["Pretraining", "End estimate", "Ground truth"]
     ZORDERS = [2, 3, 1]
+    STDS = [pretrained_std, preds_std, None]
     line_axs = []
     for i, (label_name, start_idx) in enumerate(zip(TO_SLICE, START_AX_IDX)):
         line_ax = fig.add_subplot(gs[i+2, 7])
         line_axs.append(line_ax)
-        for ax, label, zorder in zip(
-            axs[start_idx:start_idx+3*4:4], LINE_LABELS, ZORDERS,
+        for ax, label, zorder, std in zip(
+            axs[start_idx:start_idx+3*4:4], LINE_LABELS, ZORDERS, STDS,
         ):
             data = ax.images[0].get_array()
             center_data = data[:, data.shape[1] // 2] / 1000
+            if std is not None:
+                std = std[label_name]
+                std = std * diff
+                center_std = std[:, data.shape[1] // 2] / 1000
             if label_name != 'vdepth':
                 y_min, y_max = time.min(), time.max()
-                line_ax.plot(center_data, time, zorder=zorder, label=label)
+                y_values = time
             else:
                 y_min, y_max = depth.min(), depth.max()
-                line_ax.plot(center_data, depth, zorder=zorder, label=label)
+                y_values = depth
+            line_ax.plot(
+                center_data, y_values, lw=.5, zorder=zorder, label=label,
+            )
+            if std is not None:
+                line_ax.fill_betweenx(
+                    y_values,
+                    center_data-center_std,
+                    center_data+center_std,
+                    lw=0,
+                    alpha=.4,
+                )
             height = y_max-y_min
             x = cmps[data.shape[1]//2]
             dcmp = cmps[1] - cmps[2]
@@ -407,12 +429,14 @@ def plot_example(dataset, filename, figure_name, plot=True):
         line_ax.set_yticklabels([])
         line_ax.grid()
         if i == 0:
-            line_ax.legend(
+            legend = line_ax.legend(
                 loc='lower center',
                 bbox_to_anchor=(.5, 1.125),
                 fontsize=6,
                 handlelength=.2,
             )
+            for line in legend.get_lines():
+                line.set_linewidth(2)
         if i == len(TO_SLICE) - 1:
             line_ax.set_xlabel("Velocity (km/s)")
         else:
