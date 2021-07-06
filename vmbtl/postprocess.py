@@ -95,11 +95,13 @@ def main(args):
             plot=args.plot,
         )
         if percentile == 50:
-            plot_no_transfer_learning(
-                dataset=dataset,
-                filename=dataset.files["test"][idx],
-                plot=args.plot,
-            )
+            for output_name in ['vint', 'vdepth']:
+                plot_ensemble(
+                    dataset=dataset,
+                    output_name=output_name,
+                    filename=dataset.files["test"][idx],
+                    plot=args.plot,
+                )
     plot_losses(
         logdir_1d=args.logdir_1d,
         params_1d=Hyperparameters1D(is_training=True),
@@ -112,6 +114,12 @@ def main(args):
         plot=args.plot,
     )
     plot_semblance(dataset_real, plot=args.plot)
+    for output_name in ['vint', 'vdepth']:
+        plot_ensemble_real(
+            dataset=dataset_real,
+            output_name=output_name,
+            plot=args.plot,
+        )
 
 
 def launch_both_inferences(args, nn, dataset):
