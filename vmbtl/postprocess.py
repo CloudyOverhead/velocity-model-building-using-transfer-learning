@@ -91,7 +91,7 @@ def main(args):
         plot_example(
             dataset=dataset,
             filename=dataset.files["test"][idx],
-            figure_name=f"results_{percentile}th_percentile.pdf",
+            figure_name=f"results_{percentile}th_percentile.eps",
             plot=args.plot,
         )
         if percentile == 50:
@@ -686,7 +686,7 @@ def plot_ensemble(dataset, output_name, filename, plot):
         plt.text(x0, y0-.02*height, letter, va='bottom')
 
     plt.savefig(
-        join(FIGURES_DIR, f"ensemble_{output_name}.pdf"),
+        join(FIGURES_DIR, f"ensemble_{output_name}.eps"),
         bbox_inches="tight",
     )
     if plot:
@@ -779,7 +779,7 @@ def plot_losses(logdir_1d, params_1d, logdir_2d, params_2d, plot=True):
     plt.minorticks_on()
     plt.grid(which='major', alpha=.6)
     plt.grid(which='minor', alpha=.15)
-    plt.savefig(join(FIGURES_DIR, "losses.pdf"), bbox_inches="tight")
+    plt.savefig(join(FIGURES_DIR, "losses.eps"), bbox_inches="tight")
     if plot:
         plt.gcf().set_dpi(200)
         plt.show()
@@ -917,7 +917,7 @@ def plot_real_models(dataset, pretrained, preds, plot=True):
         height = y1 - y0
         plt.text(x0, y0-.02*height, letter, va='bottom')
 
-    plt.savefig(join(FIGURES_DIR, "real_models.pdf"), bbox_inches="tight")
+    plt.savefig(join(FIGURES_DIR, "real_models.eps"), bbox_inches="tight")
     if plot:
         plt.gcf().set_dpi(200)
         plt.show()
@@ -1019,7 +1019,7 @@ def plot_real_stacks(dataset, inputs, preds, plot=True):
         height = y1 - y0
         plt.text(x0, y0-.02*height, letter, va='bottom')
 
-    plt.savefig(join(FIGURES_DIR, "real_stacks.pdf"), bbox_inches="tight")
+    plt.savefig(join(FIGURES_DIR, "real_stacks.eps"), bbox_inches="tight")
     if plot:
         plt.gcf().set_dpi(200)
         plt.show()
@@ -1168,7 +1168,7 @@ def plot_semblance(dataset, plot=True):
         bbox_to_anchor=(1.0, 1.0),
     )
 
-    plt.savefig(join(FIGURES_DIR, "semblance.pdf"), bbox_inches="tight")
+    plt.savefig(join(FIGURES_DIR, "semblance.eps"), bbox_inches="tight")
     if plot:
         plt.gcf().set_dpi(200)
         plt.show()
@@ -1316,7 +1316,7 @@ def plot_ensemble_real(dataset, output_name, plot):
         plt.text(x0, y0-.02*height, letter, va='bottom')
 
     plt.savefig(
-        join(FIGURES_DIR, f"ensemble_{output_name}_real.pdf"),
+        join(FIGURES_DIR, f"ensemble_{output_name}_real.eps"),
         bbox_inches="tight",
     )
     if plot:
