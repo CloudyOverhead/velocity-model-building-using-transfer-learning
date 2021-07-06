@@ -87,7 +87,7 @@ def main(args):
             similarities, percentile, interpolation="nearest",
         )
         idx = np.argwhere(score == similarities)[0, 0]
-        print(f"SSIM {percentile}th percentile:", score)
+        print(f"SSIM {percentile}th percentile: {score} for example {idx}.")
         plot_example(
             dataset=dataset,
             filename=dataset.files["test"][idx],
