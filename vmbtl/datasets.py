@@ -138,7 +138,7 @@ def decorate_preprocess(self):
     # manually.
     self.skip_preprocess = True
 
-    def preprocess_real_data(data, labels, use_agc=False):
+    def preprocess_real_data(data, labels, use_agc=True):
         if not self.skip_preprocess:
             data = data.reshape([3071, -1, 72])
             NT = int(self.acquire.NT / self.acquire.resampling)
