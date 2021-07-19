@@ -2,6 +2,7 @@
 logs*
 *.png
 *.pdf
+*.eps
 datasets
 workdir*
 *.out
