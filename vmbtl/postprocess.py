@@ -1124,7 +1124,7 @@ def plot_semblance(dataset, plot=True):
     for i, cmp in enumerate([250, 1000, 1750]):
         temp_shotgather = shotgather[..., cmp, 0]
         temp_shotgather /= np.amax(temp_shotgather)
-        vmax = 1E-1
+        vmax = 2E-1
         axs[i, 0].imshow(
             temp_shotgather,
             aspect='auto',
