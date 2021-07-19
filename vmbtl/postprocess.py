@@ -308,8 +308,8 @@ def plot_example(dataset, filename, figure_name, plot=True):
     fig = plt.figure(figsize=[6.5, 7.5], constrained_layout=False)
     gs = fig.add_gridspec(
         nrows=NROWS,
-        ncols=NCOLS*2+2,
-        width_ratios=[.2, *(.5 for _ in range(NCOLS*2+1))],
+        ncols=NCOLS*2+3,
+        width_ratios=[.2, *(.5 for _ in range(NCOLS*2+1)), .15],
     )
     axs = []
     ax = fig.add_subplot(gs[0, 2:4])
@@ -337,8 +337,16 @@ def plot_example(dataset, filename, figure_name, plot=True):
                 mask = weights['vrms']
             else:
                 mask = weights['vdepth']
+            if row_name == 'vrms':
+                vmax_ = 2100
+            else:
+                vmax_ = None
             output_ims = col_meta[row_name].plot(
-                data, weights=mask, axs=input_axs, ims=input_ims,
+                data,
+                weights=mask,
+                axs=input_axs,
+                ims=input_ims,
+                vmax=vmax_,
             )
             for im in output_ims:
                 ims[n] = im
@@ -439,7 +447,7 @@ def plot_example(dataset, filename, figure_name, plot=True):
         if i == 0:
             legend = line_ax.legend(
                 loc='lower center',
-                bbox_to_anchor=(.5, 1.125),
+                bbox_to_anchor=(.6, 1.125),
                 fontsize=6,
                 handlelength=.2,
             )
@@ -489,17 +497,17 @@ def plot_example(dataset, filename, figure_name, plot=True):
     axs[2+NROWS-1].set_title("End estimate")
     axs[2+2*(NROWS-1)].set_title("Ground truth")
 
-    position = gs[1, 7].get_position(fig)
-    left, bottom, width, height = position.bounds
-    unpad_y = .4 * height
-    unpad_x = .4 * width
-    cax = fig.add_axes(
-        [left, bottom+unpad_y, width-2*unpad_x, height-unpad_y]
-    )
-    cbar = plt.colorbar(axs[3].images[0], cax=cax)
-    cbar.ax.set_ylabel("Velocity\n(km/s)")
-    cbar.set_ticks(range(2000, 5000, 1000))
-    cbar.set_ticklabels(range(2, 5, 1))
+    ticks = [
+        np.arange(1500, 2500, 500),
+        np.arange(2000, 5000, 1000),
+        np.arange(2000, 5000, 1000),
+    ]
+    for i, current_ticks in enumerate(ticks):
+        cax = fig.add_subplot(gs[i+2, -1])
+        cbar = plt.colorbar(axs[i+3].images[0], cax=cax)
+        cbar.ax.set_ylabel(f"Velocity (km/s)")
+        cbar.set_ticks(current_ticks)
+        cbar.set_ticklabels(current_ticks/1000)
 
     temp_axs = [*axs[:2], *np.array(axs[2:]).reshape([3, 4]).T.flatten()]
     temp_axs.insert(-6, line_axs[0])
