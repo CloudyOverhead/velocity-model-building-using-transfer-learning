@@ -525,7 +525,7 @@ def plot_example(dataset, filename, figure_name, plot=True):
         join(FIGURES_DIR, figure_name + '.eps'), bbox_inches="tight", dpi=1200,
     )
     plt.savefig(
-        join(FIGURES_DIR, figure_name + '.png'), bbox_inches="tight", dpi=100,
+        join(FIGURES_DIR, figure_name + '.png'), bbox_inches="tight", dpi=200,
     )
     if plot:
         plt.gcf().set_dpi(200)
@@ -715,7 +715,7 @@ def plot_ensemble(dataset, output_name, filename, plot):
     plt.savefig(
         join(FIGURES_DIR, f"ensemble_{output_name}.png"),
         bbox_inches="tight",
-        dpi=100,
+        dpi=200,
     )
     if plot:
         plt.gcf().set_dpi(200)
@@ -808,7 +808,7 @@ def plot_losses(logdir_1d, params_1d, logdir_2d, params_2d, plot=True):
     plt.grid(which='major', alpha=.6)
     plt.grid(which='minor', alpha=.15)
     plt.savefig(join(FIGURES_DIR, "losses.eps"), bbox_inches="tight", dpi=1200)
-    plt.savefig(join(FIGURES_DIR, "losses.png"), bbox_inches="tight", dpi=100)
+    plt.savefig(join(FIGURES_DIR, "losses.png"), bbox_inches="tight", dpi=200)
     if plot:
         plt.gcf().set_dpi(200)
         plt.show()
@@ -950,7 +950,7 @@ def plot_real_models(dataset, pretrained, preds, plot=True):
         join(FIGURES_DIR, "real_models.eps"), bbox_inches="tight", dpi=1200,
     )
     plt.savefig(
-        join(FIGURES_DIR, "real_models.png"), bbox_inches="tight", dpi=100,
+        join(FIGURES_DIR, "real_models.png"), bbox_inches="tight", dpi=200,
     )
     if plot:
         plt.gcf().set_dpi(200)
@@ -1057,7 +1057,7 @@ def plot_real_stacks(dataset, inputs, preds, plot=True):
         join(FIGURES_DIR, "real_stacks.eps"), bbox_inches="tight", dpi=1200,
     )
     plt.savefig(
-        join(FIGURES_DIR, "real_stacks.png"), bbox_inches="tight", dpi=100,
+        join(FIGURES_DIR, "real_stacks.png"), bbox_inches="tight", dpi=200,
     )
     if plot:
         plt.gcf().set_dpi(200)
@@ -1210,7 +1210,7 @@ def plot_semblance(dataset, plot=True):
         join(FIGURES_DIR, "semblance.eps"), bbox_inches="tight", dpi=1200,
     )
     plt.savefig(
-        join(FIGURES_DIR, "semblance.png"), bbox_inches="tight", dpi=100,
+        join(FIGURES_DIR, "semblance.png"), bbox_inches="tight", dpi=200,
     )
     if plot:
         plt.gcf().set_dpi(200)
@@ -1367,7 +1367,7 @@ def plot_ensemble_real(dataset, output_name, plot):
     plt.savefig(
         join(FIGURES_DIR, f"ensemble_{output_name}_real.png"),
         bbox_inches="tight",
-        dpi=100,
+        dpi=200,
     )
     if plot:
         plt.gcf().set_dpi(200)
