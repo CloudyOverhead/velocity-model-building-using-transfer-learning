@@ -575,7 +575,8 @@ def plot_ensemble(dataset, output_name, filename, plot):
 
     ensemble = []
     savedirs = [
-        dir for dir in listdir(dataset.datatest) if "EndResults_" in dir
+        dir for dir in listdir(dataset.datatest)
+        if "EndResults_" in dir and "std" not in dir
     ]
     for savedir in savedirs:
         preds = dataset.generator.read_predictions(filename, savedir)
@@ -1229,7 +1230,8 @@ def plot_ensemble_real(dataset, output_name, plot):
 
     ensemble = []
     savedirs = [
-        dir for dir in listdir(dataset.datatest) if "EndResults_" in dir
+        dir for dir in listdir(dataset.datatest)
+        if "EndResults_" in dir and "std" not in dir
     ]
     for savedir in savedirs:
         preds = dataset.generator.read_predictions(filename, savedir)
