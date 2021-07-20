@@ -1019,8 +1019,8 @@ def plot_real_stacks(dataset, inputs, preds, plot=True):
     pred_stacked = pred_stacked[crop_top:crop_bottom]
     stacked_usgs = stacked_usgs[crop_top:crop_bottom]
 
-    data_meta.plot(pred_stacked, axs=[axs[0]], vmin=0, clip=8E-2)
-    data_meta.plot(stacked_usgs, axs=[axs[1]], vmin=0, clip=1.5E-1)
+    data_meta.plot(pred_stacked, axs=[axs[0]], vmin=0, clip=1.5E-2)
+    data_meta.plot(stacked_usgs, axs=[axs[1]], vmin=0, clip=7E-2)
 
     extent = [cmps.min()/1000, cmps.max()/1000, END_TIME, start_time]
 
@@ -1132,7 +1132,7 @@ def plot_semblance(dataset, plot=True):
     for i, cmp in enumerate([250, 1000, 1750]):
         temp_shotgather = shotgather[..., cmp, 0]
         temp_shotgather /= np.amax(temp_shotgather)
-        vmax = 2E-1
+        vmax = 6E-1
         axs[i, 0].imshow(
             temp_shotgather,
             aspect='auto',
