@@ -30,13 +30,14 @@ class Article1D(Dataset):
         model.dh = 6.25
         model.NX = 692 * 2
         model.NZ = 752 * 2
+        model.layer_num_min = 48
         model.layer_dh_min = 20
-        model.layer_num_min = None
+        model.layer_dh_max = 50
         model.water_vmin = 1430
         model.water_vmax = 1560
-        model.water_dmin = .5 * model.water_vmin
-        model.water_dmax = 3.5 * model.water_vmax
-        model.vp_min = 1400.0
+        model.water_dmin = .9 * model.water_vmin
+        model.water_dmax = 3.1 * model.water_vmax
+        model.vp_min = 1300.0
         model.vp_max = 4000.0
 
         acquire = Acquisition(model=model)
@@ -53,7 +54,7 @@ class Article1D(Dataset):
         acquire.wavefuns = [0, 1]
         acquire.source_depth = (acquire.Npad+4) * model.dh
         acquire.receiver_depth = (acquire.Npad+4) * model.dh
-        acquire.tdelay = 3 / 8
+        acquire.tdelay = 3.0 / (acquire.peak_freq-acquire.df)
         acquire.singleshot = True
         acquire.configuration = 'inline'
 
@@ -134,9 +135,9 @@ class USGS(Article2D):
         model.NZ = 2000
 
         dt = acquire.dt * acquire.resampling
-        real_tdelay = 3 / 8
-        unpad = int((real_tdelay-acquire.tdelay) / dt)
-        acquire.NT = (3071-unpad) * acquire.resampling
+        real_tdelay = 0
+        pad = int((acquire.tdelay-real_tdelay) / dt)
+        acquire.NT = (3071+pad) * acquire.resampling
 
         inputs = {ShotGather.name: ShotGather(model=model, acquire=acquire)}
         outputs = {
@@ -166,7 +167,8 @@ def decorate_preprocess(self):
         if not self.skip_preprocess:
             data = data.reshape([3071, -1, 72])
             NT = int(self.acquire.NT / self.acquire.resampling)
-            data = data[-NT:]
+            pad = NT - data.shape[0]
+            data = np.pad(data, [[pad, 0], [0, 0], [0, 0]])
             data = data.swapaxes(1, 2)
 
             END_CMP = 2100
