@@ -102,10 +102,23 @@ class Article2D(Article1D):
         model.ddip_max = 4
 
         acquire.singleshot = False
+
+        inputs = {
+            ShotGatherCrop.name: ShotGatherCrop(model=model, acquire=acquire)
+        }
+        outputs = {
+            ReftimeCrop.name: ReftimeCrop(model=model, acquire=acquire),
+            VrmsCrop.name: VrmsCrop(model=model, acquire=acquire),
+            VintCrop.name: VintCrop(model=model, acquire=acquire),
+            VdepthCrop.name: VdepthCrop(model=model, acquire=acquire),
+        }
         for input in inputs.values():
             input.train_on_shots = False
+            input.mute_dir = True
         for output in outputs.values():
-            output.train_on_shots = False
+            input.train_on_shots = False
+            output.identify_direct = False
+
         return model, acquire, inputs, outputs
 
 
@@ -125,9 +138,20 @@ class USGS(Article2D):
         unpad = int((real_tdelay-acquire.tdelay) / dt)
         acquire.NT = (3071-unpad) * acquire.resampling
 
+        inputs = {ShotGather.name: ShotGather(model=model, acquire=acquire)}
+        outputs = {
+            Reftime.name: Reftime(model=model, acquire=acquire),
+            Vrms.name: Vrms(model=model, acquire=acquire),
+            Vint.name: Vint(model=model, acquire=acquire),
+            Vdepth.name: Vdepth(model=model, acquire=acquire),
+        }
         for input in inputs.values():
             input.mute_dir = False
+            input.train_on_shots = False
             input.preprocess = decorate_preprocess(input)
+        for output in outputs.values():
+            input.train_on_shots = False
+            output.identify_direct = False
 
         return model, acquire, inputs, outputs
 
@@ -250,3 +274,41 @@ class MarineModel(MarineModel):
         properties = strati.properties()
 
         return strati, properties
+
+
+class ShotGather(ShotGather):
+    def plot(
+        self, data, weights=None, axs=None, cmap='Greys', vmin=0, vmax=None,
+        clip=.08, ims=None,
+    ):
+        return super().plot(data, weights, axs, cmap, vmin, vmax, clip, ims)
+
+
+class ReftimeCrop(Reftime):
+    def preprocess(self, label, weight):
+        label, weight = super().preprocess(label, weight)
+        return label[:, 10:-10], weight[:, 10:-10]
+
+
+class VrmsCrop(Vrms):
+    def preprocess(self, label, weight):
+        label, weight = super().preprocess(label, weight)
+        return label[:, 10:-10], weight[:, 10:-10]
+
+
+class VintCrop(Vint):
+    def preprocess(self, label, weight):
+        label, weight = super().preprocess(label, weight)
+        return label[:, 10:-10], weight[:, 10:-10]
+
+
+class VdepthCrop(Vdepth):
+    def preprocess(self, label, weight):
+        label, weight = super().preprocess(label, weight)
+        return label[:, 10:-10], weight[:, 10:-10]
+
+
+class ShotGatherCrop(ShotGather):
+    def preprocess(self, data, label):
+        data = super().preprocess(data, label)
+        return data[:, :, 10:-10]

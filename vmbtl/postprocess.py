@@ -298,6 +298,7 @@ def plot_example(dataset, filename, figure_name, plot=True):
 
     src_pos, rec_pos = dataset.acquire.set_rec_src()
     _, cmps = sortcmp(None, src_pos, rec_pos)
+    cmps = cmps[10:-10]
     cmps /= 1000
     depth /= 1000
 
@@ -618,6 +619,7 @@ def plot_ensemble(dataset, output_name, filename, plot):
 
     src_pos, rec_pos = dataset.acquire.set_rec_src()
     _, cmps = sortcmp(None, src_pos, rec_pos)
+    cmps = cmps[10:-10]
     cmps /= 1000
     if output_name == 'vdepth':
         dh = dataset.model.dh
@@ -847,6 +849,7 @@ def plot_real_models(dataset, pretrained, preds, plot=True):
 
     src_pos, rec_pos = dataset.acquire.set_rec_src()
     _, cmps = sortcmp(None, src_pos, rec_pos)
+    cmps = cmps[10:-10]
 
     resampling = dataset.acquire.resampling
     dt = dataset.acquire.dt * resampling
@@ -958,6 +961,7 @@ def plot_real_stacks(dataset, inputs, preds, plot=True):
 
     src_pos, rec_pos = dataset.acquire.set_rec_src()
     _, cmps = sortcmp(None, src_pos, rec_pos)
+    cmps = cmps[10:-10]
 
     data_meta = deepcopy(dataset.inputs['shotgather'])
     data_meta.acquire.singleshot = True
@@ -1258,6 +1262,7 @@ def plot_ensemble_real(dataset, output_name, plot):
 
     src_pos, rec_pos = dataset.acquire.set_rec_src()
     _, cmps = sortcmp(None, src_pos, rec_pos)
+    cmps = cmps[10:-10]
     cmps /= 1000
     if output_name == 'vdepth':
         dh = dataset.model.dh
