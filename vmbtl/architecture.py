@@ -25,7 +25,7 @@ class RCNN2DUnpackReal(RCNN2D):
             self.receptive_field = 1
             self.cmps_per_iter = 61
         else:
-            self.receptive_field = 31
+            self.receptive_field = 19
             self.cmps_per_iter = 2*self.receptive_field - 1
 
         input_shapes = {'shotgather': (nt, ng, self.cmps_per_iter, 1)}
@@ -167,9 +167,9 @@ class Hyperparameters2D(Hyperparameters1D):
 
         self.encoder_kernels = [
             [15, 1, 1],
-            [1, 9, 9],
+            [1, 9, 3],
             [15, 1, 1],
-            [1, 9, 9],
+            [1, 9, 3],
         ]
         self.rcnn_kernel = [15, 3, 3]
 
