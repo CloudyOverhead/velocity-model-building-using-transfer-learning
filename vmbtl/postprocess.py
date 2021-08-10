@@ -523,7 +523,7 @@ def plot_example(dataset, filename, figure_name, plot=True):
         plt.text(x0, y0-.02*height, letter, va='bottom')
 
     plt.savefig(
-        join(FIGURES_DIR, figure_name + '.png'), bbox_inches="tight", dpi=1200,
+        join(FIGURES_DIR, figure_name + '.png'), bbox_inches="tight", dpi=1000,
     )
     if plot:
         plt.gcf().set_dpi(200)
