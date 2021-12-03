@@ -314,3 +314,28 @@ class ShotGatherCrop(ShotGather):
     def preprocess(self, data, label):
         data = super().preprocess(data, label)
         return data[:, :, 10:-10]
+
+    def plot(self, *args, **kwargs):
+        with CropAcquisition(self.acquire):
+            return super().plot(*args, **kwargs)
+
+
+class CropAcquisition:
+    def __init__(self, acquisition):
+        self.acquisition = acquisition
+        self._set_rec_src = acquisition.set_rec_src
+
+    def __enter__(self):
+        self.acquisition.set_rec_src = self.set_rec_src
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.acquisition.set_rec_src = self._set_rec_src
+
+    def set_rec_src(self):
+        src_pos, rec_pos = self._set_rec_src()
+        drop_ids = [*range(0, 10), *range(78, 88)]
+        src_pos = src_pos[:, ~np.isin(src_pos[3], drop_ids)]
+        rec_pos = rec_pos[:, ~np.isin(rec_pos[3], drop_ids)]
+        src_pos[3] -= 10
+        rec_pos[3] -= 10
+        return src_pos, rec_pos
