@@ -13,7 +13,7 @@ from matplotlib import pyplot as plt
 from matplotlib.patches import Rectangle
 from matplotlib.colors import TABLEAU_COLORS
 from scipy.ndimage import gaussian_filter
-from skimage.metrics import structural_similarity as ssim
+from skimage.measure import compare_ssim as ssim
 from tensorflow.compat.v1.train import summary_iterator
 from GeoFlow.__main__ import int_or_list
 from GeoFlow.SeismicUtilities import sortcmp, stack, semblance_gather
