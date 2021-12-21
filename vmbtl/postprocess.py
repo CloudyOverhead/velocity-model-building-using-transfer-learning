@@ -12,6 +12,7 @@ import pandas as pd
 from matplotlib import pyplot as plt
 from matplotlib.patches import Rectangle
 from matplotlib.colors import TABLEAU_COLORS
+from matplotlib.ticker import ScalarFormatter
 from scipy.ndimage import gaussian_filter
 from skimage.measure import compare_ssim as ssim
 from tensorflow.compat.v1.train import summary_iterator
@@ -122,6 +123,8 @@ def main(args):
         dataset=dataset_real,
         plot=args.plot,
     )
+    plot_error_vs_thickness_vs_label(dataset, plot=args.plot)
+
     plot_semblance(dataset_real, plot=args.plot)
     for output_name in ['vint', 'vdepth']:
         plot_ensemble_real(
@@ -260,6 +263,69 @@ def compare_preds(dataset, savedir):
     print("Standard deviation on RMSE of RMS conversion:", np.std(rmses_rms))
 
     return similarities
+
+
+def plot_error_vs_thickness_vs_label(dataset, plot=True):
+    savedir = "EndResults"
+    _, all_labels, all_weights, all_preds = load_all(dataset, savedir)
+
+    rmses = np.array([])
+    thicknesses = np.array([])
+    velocities = np.array([])
+    for label, weight, pred in zip(
+        all_labels["vint"], all_weights["vint"], all_preds["vint"],
+    ):
+        label = label * weight
+        pred = pred * weight
+        for slice_label, slice_pred in zip(label.T, pred.T):
+            interfaces = np.nonzero(np.diff(slice_label))
+            interfaces = interfaces[0] + 1
+            for start, end in zip([0, *interfaces[:-1]], interfaces):
+                temp_label = slice_label[start:end]
+                temp_pred = slice_pred[start:end]
+                rmse = np.sqrt(np.mean((temp_label-temp_pred)**2))
+                rmses = np.append(rmses, rmse)
+                thicknesses = np.append(thicknesses, end-start)
+                velocities = np.append(velocities, temp_label[0])
+    vmin, vmax = dataset.model.properties['vp']
+    rmses *= vmax - vmin
+    velocities = velocities*(vmax-vmin) + vmin
+    thicknesses *= velocities * dataset.acquire.dt * dataset.acquire.resampling
+
+    fig, axs = plt.subplots(ncols=2, figsize=[6.5, 3.33], sharey=True)
+
+    axs[0].scatter(velocities, rmses, c='k', s=1, alpha=5E-2)
+    axs[1].scatter(thicknesses, rmses, c='k', s=1, alpha=5E-2)
+
+    axs[0].set_ylabel("RMSE (m/s)")
+    axs[0].set_xlabel("$v_\\mathrm{int}(t, x)$ (m/s)")
+    axs[1].set_xlabel("Thickness (m)")
+
+    axs[0].set_yscale('log')
+    axs[1].set_xscale('log')
+    for ax in [axs[0].yaxis, axs[1].xaxis]:
+        ax.set_major_formatter(ScalarFormatter())
+
+    axs[0].set_ylim([5, None])
+
+    for ax, letter in zip(axs.flatten(), range(ord('a'), ord('b')+1)):
+        letter = f"({chr(letter)})"
+        plt.sca(ax)
+        x0, _ = plt.xlim()
+        y1, y0 = plt.ylim()
+        height = y1 - y0
+        plt.text(x0, y0-.02*height, letter, va='bottom')
+
+    plt.savefig(
+        join(FIGURES_DIR, "error.png"),
+        bbox_inches="tight",
+        dpi=1200,
+    )
+    if plot:
+        plt.gcf().set_dpi(200)
+        plt.show()
+    else:
+        plt.clf()
 
 
 def load_all(dataset, savedir):
