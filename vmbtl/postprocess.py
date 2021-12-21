@@ -16,7 +16,9 @@ from scipy.ndimage import gaussian_filter
 from skimage.measure import compare_ssim as ssim
 from tensorflow.compat.v1.train import summary_iterator
 from GeoFlow.__main__ import int_or_list
-from GeoFlow.SeismicUtilities import sortcmp, stack, semblance_gather
+from GeoFlow.SeismicUtilities import (
+    sortcmp, stack, semblance_gather, nmo_correction, vint2vrms,
+)
 
 from vmbtl.__main__ import main as global_main
 from vmbtl.architecture import (
