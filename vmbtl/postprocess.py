@@ -69,18 +69,25 @@ def main(args):
             RCNN2D,
             Hyperparameters2DNoTL(is_training=False),
             dataset,
-            args.logdir_2d_no_tl,
+            args.logdir_2d_no_tl + '_8E-4',
             args.gpus,
-            "NoTransferLearning",
+            "NoTransferLearning8E-4",
+        )
+        launch_inference(
+            RCNN2D,
+            Hyperparameters2DNoTL(is_training=False),
+            dataset,
+            args.logdir_2d_no_tl + '_8E-5',
+            args.gpus,
+            "NoTransferLearning8E-5",
         )
         launch_both_inferences(args, RCNN2DUnpackReal, dataset_real)
 
     compare_preds(dataset_train, savedir="Training")
     compare_preds(dataset, savedir="Pretraining")
-    compare_preds(dataset, savedir="NoTransferLearning")
-    inputs, labels, weights, preds, similarities = compare_preds(
-        dataset, savedir="EndResults",
-    )
+    compare_preds(dataset, savedir="NoTransferLearning8E-4")
+    compare_preds(dataset, savedir="NoTransferLearning8E-5")
+    similarities = compare_preds(dataset, savedir="EndResults")
 
     for percentile in [10, 50, 90]:
         score = np.percentile(
@@ -201,6 +208,59 @@ def combine_predictions(dataset, logdir, savedir):
 
 def compare_preds(dataset, savedir):
     print(f"Comparing predictions for directory {savedir}.")
+
+    nt = dataset.acquire.NT
+    dt = dataset.acquire.dt
+    resampling = dataset.acquire.resampling
+    time = np.arange(nt // resampling) * dt * resampling
+    time = time[:, None]
+
+    similarities = np.array([])
+    rmses = np.array([])
+    rmses_rms = np.array([])
+
+    for i, example in enumerate(dataset.files["test"]):
+        if (i+1) % 20 == 0:
+            print(f"Processing example {i+1} of {len(dataset.files['test'])}.")
+        _, labels, weights, filename = dataset.get_example(
+            example,
+            phase='test',
+            toinputs=RCNN2D.toinputs,
+            tooutputs=RCNN2D.tooutputs,
+        )
+        preds = dataset.generator.read_predictions(filename, savedir)
+        vint = labels['vint']
+        weight = weights['vint']
+        vint_pred = preds['vint']
+        vrms_pred = preds['vrms']
+
+        vint = vint * weight
+        vint_pred = vint_pred * weight
+        similarity = ssim(vint, vint_pred)
+        similarities = np.append(similarities, similarity)
+        rmse = np.sqrt(np.mean((vint-vint_pred)**2))
+        rmses = np.append(rmses, rmse)
+
+        vrms_pred = vrms_pred * weight
+        vrms_converted = vint2vrms(vint_pred, time)
+        rmse_rms = np.sqrt(np.mean((vrms_pred-vrms_converted)**2))
+        rmses_rms = np.append(rmses_rms, rmse_rms)
+
+    vmin, vmax = dataset.model.properties['vp']
+    rmses *= vmax - vmin
+    print("Average SSIM:", np.mean(similarities))
+    print("Standard deviation on SSIM:", np.std(similarities))
+    print("Average RMSE:", np.mean(rmses))
+    print("Standard deviation on RMSE:", np.std(rmses))
+
+    rmses_rms *= vmax - vmin
+    print("Average RMSE of RMS conversion:", np.mean(rmses_rms))
+    print("Standard deviation on RMSE of RMS conversion:", np.std(rmses_rms))
+
+    return similarities
+
+
+def load_all(dataset, savedir):
     all_inputs = {}
     all_labels = {}
     all_weights = {}
@@ -224,27 +284,7 @@ def compare_preds(dataset, savedir):
                     )
                 else:
                     target_dict[key] = current_array
-
-    similarities = np.array([])
-    rmses = np.array([])
-    for labels, weights, preds in zip(
-        all_labels["vint"], all_weights["vint"], all_preds["vint"],
-    ):
-        temp_labels = labels * weights
-        temp_preds = preds * weights
-        similarity = ssim(temp_labels, temp_preds)
-        similarities = np.append(similarities, similarity)
-        rmse = np.sqrt(np.mean((temp_labels-temp_preds)**2))
-        rmses = np.append(rmses, rmse)
-    vmin, vmax = dataset.model.properties['vp']
-    rmses *= vmax - vmin
-
-    print("Average SSIM:", np.mean(similarities))
-    print("Standard deviation on SSIM:", np.std(similarities))
-    print("Average RMSE:", np.mean(rmses))
-    print("Standard deviation on RMSE:", np.std(rmses))
-
-    return all_inputs, all_labels, all_weights, all_preds, similarities
+    return all_inputs, all_labels, all_weights, all_preds
 
 
 def plot_example(dataset, filename, figure_name, plot=True):
