@@ -88,6 +88,8 @@ def main(args):
         compare_preds(dataset, savedir="NoTransferLearning" + lr)
     similarities = compare_preds(dataset, savedir="EndResults")
 
+    plot_error_vs_thickness_vs_label(dataset, plot=args.plot)
+
     for percentile in [10, 50, 90]:
         score = np.percentile(
             similarities, percentile, interpolation="nearest",
@@ -119,8 +121,6 @@ def main(args):
         dataset=dataset_real,
         plot=args.plot,
     )
-    plot_error_vs_thickness_vs_label(dataset, plot=args.plot)
-
     plot_semblance(dataset_real, plot=args.plot)
     for output_name in ['vint', 'vdepth']:
         plot_ensemble_real(
@@ -707,15 +707,19 @@ def plot_ensemble(dataset, output_name, filename, plot):
     std = std[output_name]
 
     similarities = np.array([])
+    rmses = np.array([])
     for pred in ensemble:
         similarity = ssim(mean*weight, pred*weight)
         similarities = np.append(similarities, similarity)
+        rmse = np.sqrt(np.mean((mean*weight-pred*weight)**2))
+        rmses = np.append(rmses, rmse)
+    vmin, vmax = dataset.model.properties['vp']
+    rmses *= vmax - vmin
 
     ref = labels['ref']
     crop_top = int(np.nonzero(ref.astype(bool).any(axis=1))[0][0] * .95)
     dh = dataset.model.dh
     dt = dataset.acquire.dt * dataset.acquire.resampling
-    vmin, vmax = dataset.model.properties['vp']
     diff = vmax - vmin
     water_v = float(labels['vint'][0, 0])*diff + vmin
     tdelay = dataset.acquire.tdelay
@@ -748,7 +752,11 @@ def plot_ensemble(dataset, output_name, filename, plot):
         end = (len(label)-1)*dt + start
 
     far = np.argsort(similarities)
+    print("Farthest SSIMs:", similarities[far[:3]])
+    print("Farthest RMSEs:", rmses[far[:3]])
     closest = np.argmax(similarities)
+    print("Closest SSIM:", similarities[closest])
+    print("Closest RMSE:", rmses[closest])
     arrays = np.array(
         [
             [label, ensemble[closest], std],
@@ -1395,7 +1403,9 @@ def plot_ensemble_real(dataset, output_name, plot):
         end = (len(ensemble[0])-1)*dt + start
 
     far = np.argsort(similarities)
+    print("Farthest SSIMs:", similarities[far[:3]])
     closest = np.argmax(similarities)
+    print("Closest SSIM:", similarities[closest])
     arrays = np.array(
         [ensemble[closest], std, *[ensemble[i] for i in far[:3]]]
     )
