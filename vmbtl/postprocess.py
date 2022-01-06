@@ -132,7 +132,6 @@ def main(args):
 
 def launch_both_inferences(args, nn, dataset):
     params_1d = Hyperparameters1D(is_training=False)
-    params_1d.batch_size = 2
     params_2d = Hyperparameters2D(is_training=False)
     for logdir, savedir, params in zip(
         [args.logdir_1d, args.logdir_2d],
@@ -152,7 +151,7 @@ def launch_inference(nn, params, dataset, logdir, gpus, savedir):
     params.batch_size = 2
     logdirs = sorted(listdir(logdir))
     for i, current_logdir in enumerate(logdirs):
-        if int(current_logdir) in IGNORE_IDX:
+        if int(current_logdir) in IGNORE_NNS:
             continue
         print(f"Using NN {i+1} out of {len(logdirs)}.")
         print(f"Started at {datetime.now()}.")
@@ -184,7 +183,7 @@ def combine_predictions(dataset, logdir, savedir):
     for filename in dataset.files["test"]:
         preds = {key: [] for key in dataset.generator.outputs}
         for i, current_logdir in enumerate(logdirs):
-            if int(current_logdir) in IGNORE_IDX:
+            if int(current_logdir) in IGNORE_NNS:
                 continue
             current_load_dir = f"{savedir}_{i}"
             current_preds = dataset.generator.read_predictions(
@@ -654,7 +653,7 @@ def plot_example(dataset, filename, figure_name, plot=True):
 def load_events(logdir):
     data = []
     for i in listdir(logdir):
-        if int(i) in IGNORE_IDX:
+        if int(i) in IGNORE_NNS:
             continue
         current_logdir = join(logdir, i)
         events_path = [
