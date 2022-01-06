@@ -68,28 +68,21 @@ def main(args):
             "Training",
         )
         launch_both_inferences(args, RCNN2D, dataset)
-        launch_inference(
-            RCNN2D,
-            Hyperparameters2DNoTL(is_training=False),
-            dataset,
-            args.logdir_2d_no_tl + '_8E-4',
-            args.gpus,
-            "NoTransferLearning8E-4",
-        )
-        launch_inference(
-            RCNN2D,
-            Hyperparameters2DNoTL(is_training=False),
-            dataset,
-            args.logdir_2d_no_tl + '_8E-5',
-            args.gpus,
-            "NoTransferLearning8E-5",
-        )
+        for lr in ['8E-4', '8E-5']:
+            launch_inference(
+                RCNN2D,
+                Hyperparameters2DNoTL(is_training=False),
+                dataset,
+                args.logdir_2d_no_tl + '_' + lr,
+                args.gpus,
+                "NoTransferLearning" + lr,
+            )
         launch_both_inferences(args, RCNN2DUnpackReal, dataset_real)
 
     compare_preds(dataset_train, savedir="Training")
     compare_preds(dataset, savedir="Pretraining")
-    compare_preds(dataset, savedir="NoTransferLearning8E-4")
-    compare_preds(dataset, savedir="NoTransferLearning8E-5")
+    for lr in ['8E-4', '8E-5']:
+        compare_preds(dataset, savedir="NoTransferLearning" + lr)
     similarities = compare_preds(dataset, savedir="EndResults")
 
     for percentile in [10, 50, 90]:
