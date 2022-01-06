@@ -31,6 +31,9 @@ from vmbtl.datasets import Article2D, USGS
 FIGURES_DIR = "figures"
 TOINPUTS = ['shotgather']
 TOOUTPUTS = ['ref', 'vrms', 'vint', 'vdepth']
+IGNORE_NNS = [2, 9]
+SORTED_NNS = sorted([str(i) for i in range(16)])
+IGNORE_IDX = [SORTED_NNS.index(str(i)) for i in IGNORE_NNS]
 
 plt.rcParams.update(
     {
@@ -146,8 +149,11 @@ def launch_inference(nn, params, dataset, logdir, gpus, savedir):
     print("Weights:", logdir)
     print("Case:", savedir)
 
-    logdirs = listdir(logdir)
+    params.batch_size = 2
+    logdirs = sorted(listdir(logdir))
     for i, current_logdir in enumerate(logdirs):
+        if int(current_logdir) in IGNORE_IDX:
+            continue
         print(f"Using NN {i+1} out of {len(logdirs)}.")
         print(f"Started at {datetime.now()}.")
         current_logdir = join(logdir, current_logdir)
@@ -174,10 +180,12 @@ def launch_inference(nn, params, dataset, logdir, gpus, savedir):
 
 def combine_predictions(dataset, logdir, savedir):
     print("Averaging predictions.")
-    logdirs = listdir(logdir)
+    logdirs = sorted(listdir(logdir))
     for filename in dataset.files["test"]:
         preds = {key: [] for key in dataset.generator.outputs}
-        for i in range(len(logdirs)):
+        for i, current_logdir in enumerate(logdirs):
+            if int(current_logdir) in IGNORE_IDX:
+                continue
             current_load_dir = f"{savedir}_{i}"
             current_preds = dataset.generator.read_predictions(
                 filename, current_load_dir,
@@ -636,12 +644,13 @@ def plot_example(dataset, filename, figure_name, plot=True):
 def load_events(logdir):
     data = []
     for i in listdir(logdir):
+        if int(i) in IGNORE_IDX:
+            continue
         current_logdir = join(logdir, i)
         events_path = [
             path for path in listdir(current_logdir) if "events" in path
         ]
-        assert len(events_path) == 1
-        events_path = join(current_logdir, events_path[0])
+        events_path = join(current_logdir, events_path[-1])
         current_data = pd.DataFrame([])
         events = summary_iterator(events_path)
         for event in events:
@@ -683,7 +692,11 @@ def plot_ensemble(dataset, output_name, filename, plot):
     ensemble = []
     savedirs = [
         dir for dir in listdir(dataset.datatest)
-        if "EndResults_" in dir and "std" not in dir
+        if (
+            "EndResults_" in dir
+            and "std" not in dir
+            and int(dir.split('_')[-1]) not in IGNORE_IDX
+        )
     ]
     for savedir in savedirs:
         preds = dataset.generator.read_predictions(filename, savedir)
@@ -1326,7 +1339,11 @@ def plot_ensemble_real(dataset, output_name, plot):
     ensemble = []
     savedirs = [
         dir for dir in listdir(dataset.datatest)
-        if "EndResults_" in dir and "std" not in dir
+        if (
+            "EndResults_" in dir
+            and "std" not in dir
+            and int(dir.split('_')[-1]) not in IGNORE_IDX
+        )
     ]
     for savedir in savedirs:
         preds = dataset.generator.read_predictions(filename, savedir)
