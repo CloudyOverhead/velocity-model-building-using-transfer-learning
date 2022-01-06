@@ -550,6 +550,16 @@ def plot_example(dataset, filename, figure_name, plot=True):
                 fc='none',
             )
             ax.add_patch(rect)
+        if label_name == 'vrms':
+            gather = inputs['shotgather'][:, :, data.shape[1] // 2, 0]
+            velocities = np.linspace(vmin, vmax, 100)
+            line_ax.imshow(
+                semblance_gather(gather, time, offsets, velocities),
+                aspect='auto',
+                cmap='Greys',
+                extent=[vmin/1000, vmax/1000, y_max, y_min],
+                alpha=.8,
+            )
         line_ax.set_xlim(vmin/1000, vmax/1000)
         line_ax.set_ylim(y_max, y_min)
         line_ax.set_yticklabels([])
@@ -1230,8 +1240,8 @@ def plot_semblance(dataset, plot=True):
 
     fig, axs = plt.subplots(
         nrows=3,
-        ncols=2,
-        figsize=[3.33, 8],
+        ncols=3,
+        figsize=[4.33, 8],
         sharex='col',
         sharey=True,
         gridspec_kw={'wspace': .05},
@@ -1279,6 +1289,17 @@ def plot_semblance(dataset, plot=True):
             )
         axs[i, 1].set_xlim([velocities.min() / 1000, velocities.max() / 1000])
 
+        v = preds['vrms'][:, cmp]
+        corrected = nmo_correction(temp_shotgather, times, offsets, v)
+        axs[i, 2].imshow(
+            corrected,
+            aspect='auto',
+            cmap='Greys',
+            extent=extent_gather,
+            vmin=0,
+            vmax=vmax,
+        )
+
     for ax in axs.flatten():
         plt.sca(ax)
         plt.minorticks_on()
@@ -1301,10 +1322,11 @@ def plot_semblance(dataset, plot=True):
 
     axs[-1, 0].set_xlabel("$h$ (km)")
     axs[-1, 1].set_xlabel("Velocity (km/s)")
+    axs[-1, 2].set_xlabel("$h$ (km)")
     for ax in axs[:, 0]:
         ax.set_ylabel("$t$ (s)")
 
-    for ax, letter in zip(axs.T.flatten(), range(ord('a'), ord('f')+1)):
+    for ax, letter in zip(axs.T.flatten(), range(ord('a'), ord('i')+1)):
         letter = f"({chr(letter)})"
         plt.sca(ax)
         x0, _ = plt.xlim()
