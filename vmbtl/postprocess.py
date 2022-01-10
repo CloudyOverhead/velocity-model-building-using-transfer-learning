@@ -80,7 +80,9 @@ def main(args):
                 args.gpus,
                 "NoTransferLearning" + lr,
             )
-        launch_both_inferences(args, RCNN2DUnpackReal, dataset_real)
+        launch_both_inferences(
+            args, RCNN2DUnpackReal, dataset_real, batch_size=2,
+        )
 
     compare_preds(dataset_train, savedir="Training")
     compare_preds(dataset, savedir="Pretraining")
@@ -130,9 +132,16 @@ def main(args):
         )
 
 
-def launch_both_inferences(args, nn, dataset):
+def launch_both_inferences(args, nn, dataset, batch_size=None):
     params_1d = Hyperparameters1D(is_training=False)
     params_2d = Hyperparameters2D(is_training=False)
+    if batch_size is not None:
+        if isinstance(args.gpus, int) and args.gpus > batch_size:
+            args.gpus = batch_size
+        elif isinstance(args.gpus, list) and len(args.gpus) > batch_size:
+            args.gpus = args.gpus[:batch_size]
+        for params in [params_1d, params_2d]:
+            params.batch_size = batch_size
     for logdir, savedir, params in zip(
         [args.logdir_1d, args.logdir_2d],
         ["Pretraining", "EndResults"],
@@ -148,7 +157,6 @@ def launch_inference(nn, params, dataset, logdir, gpus, savedir):
     print("Weights:", logdir)
     print("Case:", savedir)
 
-    params.batch_size = 2
     logdirs = sorted(listdir(logdir))
     for i, current_logdir in enumerate(logdirs):
         if int(current_logdir) in IGNORE_NNS:
