@@ -90,7 +90,6 @@ def main(args):
         compare_preds(dataset, savedir="NoTransferLearning" + lr)
     similarities = compare_preds(dataset, savedir="EndResults")
 
-    plot_error_vs_thickness_vs_label(dataset, plot=args.plot)
 
     for percentile in [10, 50, 90]:
         score = np.percentile(
@@ -130,6 +129,7 @@ def main(args):
             output_name=output_name,
             plot=args.plot,
         )
+    plot_error(dataset, plot=args.plot)
 
 
 def launch_both_inferences(args, nn, dataset, batch_size=None):
@@ -273,13 +273,16 @@ def compare_preds(dataset, savedir):
     return similarities
 
 
-def plot_error_vs_thickness_vs_label(dataset, plot=True):
+def plot_error(dataset, plot=True):
     savedir = "EndResults"
     _, all_labels, all_weights, all_preds = load_all(dataset, savedir)
 
     rmses = np.array([])
     thicknesses = np.array([])
     velocities = np.array([])
+    depths = np.array([])
+    vmin, vmax = dataset.model.properties['vp']
+    dt = dataset.acquire.dt * dataset.acquire.resampling / 2
     for label, weight, pred in zip(
         all_labels["vint"], all_weights["vint"], all_preds["vint"],
     ):
@@ -288,33 +291,37 @@ def plot_error_vs_thickness_vs_label(dataset, plot=True):
         for slice_label, slice_pred in zip(label.T, pred.T):
             interfaces = np.nonzero(np.diff(slice_label))
             interfaces = interfaces[0] + 1
+            current_depth = 0
             for start, end in zip([0, *interfaces[:-1]], interfaces):
                 temp_label = slice_label[start:end]
                 temp_pred = slice_pred[start:end]
                 rmse = np.sqrt(np.mean((temp_label-temp_pred)**2))
                 rmses = np.append(rmses, rmse)
                 thicknesses = np.append(thicknesses, end-start)
-                velocities = np.append(velocities, temp_label[0])
-    vmin, vmax = dataset.model.properties['vp']
+                velocity = temp_label[0]*(vmax-vmin) + vmin
+                velocities = np.append(velocities, velocity)
+                depths = np.append(depths, current_depth)
+                current_depth += (end-start) * velocity * dt
     rmses *= vmax - vmin
-    velocities = velocities*(vmax-vmin) + vmin
-    thicknesses *= velocities * dataset.acquire.dt * dataset.acquire.resampling
+    thicknesses *= velocities * dt
 
-    fig, axs = plt.subplots(ncols=2, figsize=[6.5, 3.33], sharey=True)
+    fig, axs = plt.subplots(nrows=3, figsize=[3.33, 7.5], sharex=True)
 
-    axs[0].scatter(velocities, rmses, c='k', s=1, alpha=5E-2)
-    axs[1].scatter(thicknesses, rmses, c='k', s=1, alpha=5E-2)
+    axs[0].scatter(rmses, velocities, c='k', s=1, alpha=5E-2)
+    axs[1].scatter(rmses, thicknesses, c='k', s=1, alpha=5E-2)
+    axs[2].scatter(rmses, depths, c='k', s=1, alpha=5E-2)
 
-    axs[0].set_ylabel("RMSE (m/s)")
-    axs[0].set_xlabel("$v_\\mathrm{int}(t, x)$ (m/s)")
-    axs[1].set_xlabel("Thickness (m)")
+    axs[-1].set_xlabel("RMSE (m/s)")
+    axs[0].set_ylabel("$v_\\mathrm{int}(t, x)$ (m/s)")
+    axs[1].set_ylabel("Thickness (m)")
+    axs[2].set_ylabel("Depth (m)")
 
-    axs[0].set_yscale('log')
-    axs[1].set_xscale('log')
-    for ax in [axs[0].yaxis, axs[1].xaxis]:
+    axs[0].set_xscale('log')
+    axs[1].set_yscale('log')
+    for ax in [axs[0].xaxis, axs[1].yaxis]:
         ax.set_major_formatter(ScalarFormatter())
 
-    axs[0].set_ylim([5, None])
+    axs[0].set_xlim([5, None])
 
     for ax, letter in zip(axs.flatten(), range(ord('a'), ord('b')+1)):
         letter = f"({chr(letter)})"
