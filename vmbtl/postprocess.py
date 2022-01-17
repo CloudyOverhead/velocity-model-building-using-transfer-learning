@@ -135,27 +135,37 @@ def main(args):
 def launch_both_inferences(args, nn, dataset, batch_size=None):
     params_1d = Hyperparameters1D(is_training=False)
     params_2d = Hyperparameters2D(is_training=False)
-    if batch_size is not None:
-        if isinstance(args.gpus, int) and args.gpus > batch_size:
-            args.gpus = batch_size
-        elif isinstance(args.gpus, list) and len(args.gpus) > batch_size:
-            args.gpus = args.gpus[:batch_size]
-        for params in [params_1d, params_2d]:
-            params.batch_size = batch_size
     for logdir, savedir, params in zip(
         [args.logdir_1d, args.logdir_2d],
         ["Pretraining", "EndResults"],
         [params_1d, params_2d],
     ):
-        launch_inference(nn, params, dataset, logdir, args.gpus, savedir)
+        launch_inference(
+            nn=nn,
+            params=params,
+            dataset=dataset,
+            logdir=logdir,
+            gpus=args.gpus,
+            savedir=savedir,
+        )
 
 
-def launch_inference(nn, params, dataset, logdir, gpus, savedir):
+def launch_inference(
+    nn, params, dataset, logdir, gpus, savedir, batch_size=None,
+):
     print("Launching inference.")
     print("NN:", nn.__name__)
     print("Hyperparameters:", type(params).__name__)
     print("Weights:", logdir)
     print("Case:", savedir)
+
+    if batch_size is not None:
+        if isinstance(gpus, int) and gpus > batch_size:
+            gpus = batch_size
+        elif isinstance(gpus, list) and len(gpus) > batch_size:
+            gpus = gpus[:batch_size]
+        params = deepcopy(params)
+        params.batch_size = batch_size
 
     logdirs = sorted(listdir(logdir))
     for i, current_logdir in enumerate(logdirs):
