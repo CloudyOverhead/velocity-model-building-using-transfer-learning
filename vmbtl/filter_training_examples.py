@@ -31,7 +31,14 @@ if __name__ == '__main__':
                 )
                 loss_value = loss_value.numpy()[0]
                 has_no_interface = (np.diff(label, axis=0) < 1E-5).all()
-                if has_no_interface or np.isnan(loss_value) or loss_value > 1E9:
+                has_consistent_surface_v = (label[0] == label[0, 0]).all()
+                do_discard = (
+                    has_no_interface
+                    or np.isnan(loss_value)
+                    or loss_value > 1E9
+                    or not has_consistent_surface_v
+                )
+                if do_discard:
                     print(f"Discarding example {filename}.")
                     remove(filepath)
                     break
