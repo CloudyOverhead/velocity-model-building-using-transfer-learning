@@ -713,7 +713,7 @@ def plot_ensemble(dataset, output_name, filename, plot):
         nrows=2,
         ncols=4,
         figsize=[6.5, 3.33],
-        constrained_layout=False,
+        constrained_layout=True,
         gridspec_kw={"width_ratios": [*(1 for _ in range(3)), .2]},
     )
     cax_std = axs[0, -1]
@@ -1387,7 +1387,7 @@ def plot_ensemble_real(dataset, output_name, plot):
         nrows=5,
         ncols=2,
         figsize=[3.33, 5],
-        constrained_layout=False,
+        constrained_layout=True,
         gridspec_kw={"width_ratios": [1, .1], "hspace": .3},
     )
     cax = axs[0, -1]
