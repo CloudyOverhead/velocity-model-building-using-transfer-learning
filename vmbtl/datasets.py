@@ -1,10 +1,16 @@
 # -*- coding: utf-8 -*-
 """Define parameters for different datasets."""
 
-from os.path import abspath
+from os import makedirs
+from os.path import abspath, exists, join
+from urllib.request import urlretrieve
+import gzip
+import shutil
 
 import numpy as np
 from scipy.signal import convolve
+from skimage.transform import rescale
+import segyio
 from ModelGenerator import (
     Sequence, Stratigraphy, Deformation, Property, Lithology,
 )
@@ -211,6 +217,138 @@ def decorate_preprocess(self):
             self.skip_preprocess = False
             return data
     return preprocess_real_data
+
+
+class Article2DSteep(Article2D):
+    def set_dataset(self):
+        model, acquire, inputs, outputs = super().set_dataset()
+
+        self.trainsize = 2000
+        self.testsize = 10
+
+        model.NX = int(7000 / 5)
+        model.NZ = int(2800 / 5)
+        model.dh = 1.25 * 5
+        model.dip_max = 45
+        model.ddip_max = 8
+        model.water_dmin = 450
+        model.water_dmax = 1200
+        model.vp_max = 4500
+        model.dzmax = 1200
+        model.accept_decrease = .65
+        model.max_deform_freq = .01
+        model.min_deform_freq = .0001
+        model.amp_max = 80
+        model.max_deform_nfreq = 40
+        model.prob_deform_change = .1
+        model.deform_cumulative = True
+
+        model.fault_dip_min = 35
+        model.fault_dip_max = 89
+        model.fault_displ_min = -1000
+        model.fault_displ_max = 0
+        model.fault_x_lim = [int(.25*model.NX), int(.75*model.NX)]
+        model.fault_y_lim = [int(.25*model.NZ), int(.75*model.NZ)]
+        model.fault_nmax = 3
+        model.fault_prob = [.5, .2, .1]
+        model.generate_model = self.decorate_generate_model(model)
+
+        acquire.dt = .0002
+        acquire.resampling = 10
+        acquire.NT = int(3 / acquire.dt)
+        acquire.dg = 8
+        acquire.ds = 8
+        acquire.gmin = 0
+        acquire.gmax = int(4000 / model.dh)
+        acquire.minoffset = 0
+        # acquire.peak_freq = 7
+        # acquire.df = 2
+        # acquire.wavefuns = [0, 1]
+        acquire.source_depth = (acquire.Npad+4) * model.dh
+        acquire.receiver_depth = (acquire.Npad+4) * model.dh
+        acquire.tdelay = 3.0 / (acquire.peak_freq-acquire.df)
+        acquire.configuration = 'inline'
+
+        return model, acquire, inputs, outputs
+
+    def decorate_generate_model(self, model):
+        old_generate_model = model.generate_model
+
+        def generate_model(*args, seed=None, **kwargs):
+            props, layerids, layers = old_generate_model(
+                *args, seed=seed, **kwargs,
+            )
+            source_depth = self.acquire.source_depth
+            dh = self.model.dh
+            water_top = int(source_depth / dh * 2)
+            props['vp'][:water_top] = 1500
+            return props, layerids, layers
+        return generate_model
+
+
+class Marmousi(Article2DSteep):
+    FILENAME = "vp_marmousi-ii.segy"
+    URL = "http://www.agl.uh.edu/downloads/vp_marmousi-ii.segy.gz"
+    WATER_PAD = 0
+    RESCALE_FACTOR = 1 / 5
+    NX = 13600
+    NZ = 2800
+
+    def set_dataset(self):
+        model, acquire, inputs, outputs = super().set_dataset()
+
+        self.trainsize = 0
+        self.validatesize = 0
+        self.testsize = 1
+
+        model.generate_model = self.load_model
+        if acquire.gmax is not None:
+            self.lateral_pad = int(acquire.Npad + acquire.gmax/2)
+        else:
+            self.lateral_pad = 0
+        model.NX = int(self.NX*self.RESCALE_FACTOR+2*self.lateral_pad)
+        model.NZ = int(self.NZ*self.RESCALE_FACTOR+self.WATER_PAD)
+
+        acquire.NT = int(3 / acquire.dt)
+
+        inputs = {ShotGather.name: ShotGather(model=model, acquire=acquire)}
+        outputs = {
+            Reftime.name: Reftime(model=model, acquire=acquire),
+            Vrms.name: Vrms(model=model, acquire=acquire),
+            Vint.name: Vint(model=model, acquire=acquire),
+            Vdepth.name: Vdepth(model=model, acquire=acquire),
+        }
+        for input in inputs.values():
+            input.mute_dir = True
+            input.train_on_shots = False
+        for output in outputs.values():
+            input.train_on_shots = False
+            output.identify_direct = False
+
+        return model, acquire, inputs, outputs
+
+    def load_model(self, *args, **kwargs):
+        filepath = join(self.basepath, self.name, self.FILENAME)
+        if not exists(filepath):
+            makedirs(join(self.basepath, self.name))
+            urlretrieve(self.URL, filename=filepath + '.gz')
+            with gzip.open(filepath + '.gz', 'rb') as compressed_f:
+                with open(filepath, 'wb') as decompressed_f:
+                    shutil.copyfileobj(compressed_f, decompressed_f)
+        vp = segyio.open(filepath, ignore_geometry=True)
+        vp = np.concatenate([np.copy(t)[:, None] for t in vp.trace[:]], axis=1)
+        vp *= 1000
+        vp = vp[1:, 1:]
+        vp = rescale(vp, self.RESCALE_FACTOR)
+        vp = np.pad(vp, [[self.WATER_PAD, 0], [0, 0]], constant_values=1500)
+        pad = self.lateral_pad
+        vp = np.pad(vp, [[0, 0], [pad, pad]], mode='edge')
+        props = {
+            'vp': vp,
+            'vs': np.zeros_like(vp),
+            'rho': np.full_like(vp, 2000),
+        }
+        return props, None, None
 
 
 class MarineModel(MarineModel):

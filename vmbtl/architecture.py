@@ -185,3 +185,20 @@ class Hyperparameters2DNoTL(Hyperparameters2D):
     def __init__(self, is_training=True):
         super().__init__(is_training=is_training)
         self.restore_from = None
+
+
+class Hyperparameters2DSteep(Hyperparameters2D):
+    def __init__(self, is_training=True):
+        super().__init__(is_training=is_training)
+        self.learning_rate = 8E-5
+        if is_training:
+            CHECKPOINT_2D = abspath(
+                join(".", "logs", "weights_2d", "0", "checkpoint_120")
+            )
+            self.restore_from = CHECKPOINT_2D
+            self.loss_scales = (
+                {'ref': .6, 'vrms': .3, 'vint': .1, 'vdepth': .0},
+                {'ref': .1, 'vrms': .7, 'vint': .2, 'vdepth': .0},
+                {'ref': .1, 'vrms': .3, 'vint': .5, 'vdepth': .1},
+            )
+            self.seed = (6, 7, 8)
