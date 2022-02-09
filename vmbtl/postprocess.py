@@ -211,6 +211,7 @@ def launch_inference(
 def combine_predictions(dataset, logdir, savedir):
     print("Averaging predictions.")
     logdirs = sorted(listdir(logdir))
+    dataset._getfilelist()
     for filename in dataset.files["test"]:
         preds = {key: [] for key in dataset.generator.outputs}
         for i, current_logdir in enumerate(logdirs):
