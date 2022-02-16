@@ -706,16 +706,22 @@ def load_events(logdir):
         events_path = [
             path for path in listdir(current_logdir) if "events" in path
         ]
-        events_path = join(current_logdir, events_path[-1])
-        current_data = pd.DataFrame([])
-        events = summary_iterator(events_path)
-        for event in events:
-            if hasattr(event, 'step'):
-                step = event.step
-                for value in event.summary.value:
-                    column = value.tag
-                    value = value.simple_value
-                    current_data.loc[step, column] = np.log10(value)
+        if events_path:
+            events_path = join(current_logdir, events_path[-1])
+            current_data = pd.DataFrame([])
+            events = summary_iterator(events_path)
+            for event in events:
+                if hasattr(event, 'step'):
+                    step = event.step
+                    for value in event.summary.value:
+                        column = value.tag
+                        value = value.simple_value
+                        current_data.loc[step, column] = np.log10(value)
+        else:
+            events_path = join(logdir, 'progress.csv')
+            assert exists(events_path)
+            current_data = pd.read_csv(events_path)
+            current_data = np.log10(current_data)
         data.append(current_data)
     data = pd.concat(data)
     by_index = data.groupby(data.index)
