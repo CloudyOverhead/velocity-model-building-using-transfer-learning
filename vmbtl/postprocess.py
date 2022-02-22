@@ -505,7 +505,7 @@ def plot_example(dataset, filename, figure_name, plot=True):
             else:
                 mask = weights['vdepth']
             if row_name == 'vrms':
-                vmax_ = 2100
+                vmax_ = 2500
             else:
                 vmax_ = None
             output_ims = col_meta[row_name].plot(
@@ -1316,7 +1316,7 @@ def plot_semblance(dataset, plot=True):
     for i, cmp in enumerate([250, 1000, 1750]):
         temp_shotgather = shotgather[..., cmp, 0]
         temp_shotgather /= np.amax(temp_shotgather)
-        vmax = 6E-1
+        vmax = 4E-1
         axs[i, 0].imshow(
             temp_shotgather,
             aspect='auto',
@@ -1500,7 +1500,7 @@ def plot_ensemble_real(dataset, output_name, plot):
         if i != 1:
             array = meta.postprocess(array)
             cmap = 'jet'
-            vmin, vmax = 1400, 3100
+            vmin, vmax = 1400, 3500
         else:
             vmin, vmax = dataset.model.properties["vp"]
             array = array * (vmax-vmin)
@@ -1717,7 +1717,7 @@ def plot_examples_steep(dataset, plot=True):
     cbar.set_ticks(ticks)
     cbar.set_ticklabels(ticks/1000)
 
-    for ax, letter in zip(axs.flatten(), range(ord('a'), ord('i')+1)):
+    for ax, letter in zip(axs.T.flatten(), range(ord('a'), ord('i')+1)):
         letter = f"({chr(letter)})"
         plt.sca(ax)
         x0, _ = plt.xlim()
@@ -1943,7 +1943,7 @@ def plot_ensemble_marmousi(dataset, plot):
         if i != 2:
             array = meta.postprocess(array)
             cmap = 'inferno'
-            vmin, vmax = None, None
+            vmin, vmax = 1500, 4500
         else:
             vmin, vmax = dataset.model.properties["vp"]
             array = array * (vmax-vmin)
