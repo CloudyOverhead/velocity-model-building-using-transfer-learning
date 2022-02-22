@@ -26,7 +26,7 @@ from vmbtl.architecture import (
     RCNN2D, RCNN2DUnpackReal, Hyperparameters1D, Hyperparameters2D,
     Hyperparameters2DNoTL, Hyperparameters2DSteep,
 )
-from vmbtl.datasets import Article2D, USGS, Marmousi
+from vmbtl.datasets import Article2D, USGS, Article2DSteep, Marmousi
 
 FIGURES_DIR = "figures"
 TOINPUTS = ['shotgather']
@@ -59,6 +59,8 @@ def main(args):
     dataset_real._getfilelist()
     dataset_marmousi = Marmousi()
     dataset_marmousi._getfilelist()
+    dataset_steep = Article2DSteep()
+    dataset_steep._getfilelist()
 
     if not exists(FIGURES_DIR):
         makedirs(FIGURES_DIR)
@@ -84,6 +86,14 @@ def main(args):
             )
         launch_both_inferences(
             args, RCNN2DUnpackReal, dataset_real, batch_size=2,
+        )
+        launch_inference(
+            RCNN2D,
+            Hyperparameters2DSteep(is_training=False),
+            dataset_steep,
+            args.logdir_2d + '_steep',
+            args.gpus,
+            "Steep",
         )
         launch_inference(
             RCNN2D,
@@ -143,6 +153,7 @@ def main(args):
     plot_error(dataset, plot=args.plot)
     plot_marmousi(dataset=dataset_marmousi, plot=args.plot)
     plot_ensemble_marmousi(dataset=dataset_marmousi, plot=args.plot)
+    plot_examples_steep(dataset=dataset_steep, plot=args.plot)
 
 
 def launch_both_inferences(args, nn, dataset, batch_size=None):
@@ -1560,31 +1571,180 @@ def plot_ensemble_real(dataset, output_name, plot):
         plt.clf()
 
 
+def plot_examples_steep(dataset, plot=True):
+    toinputs = []
+    tooutputs = ['vint']
+
+    fig, axs = plt.subplots(
+        nrows=3,
+        ncols=3,
+        gridspec_kw={'width_ratios': [1, 1, .5]},
+        figsize=[4.3, 4.3],
+        constrained_layout=False,
+    )
+
+    meta = dataset.outputs['vint']
+
+    dt = dataset.acquire.dt * dataset.acquire.resampling
+    vmin, vmax = dataset.model.properties['vp']
+    diff = vmax - vmin
+    tdelay = dataset.acquire.tdelay
+    src_pos, rec_pos = dataset.acquire.set_rec_src()
+    _, cmps = sortcmp(None, src_pos, rec_pos)
+    cmps = cmps[10:-10]
+    cmps /= 1000
+
+    similarities = compare_preds(dataset, "Steep")
+    for percentile, row_axs in zip([90, 50, 10], axs):
+        score = np.percentile(
+            similarities, percentile, interpolation="nearest",
+        )
+        idx = np.argwhere(score == similarities)[0, 0]
+        print(f"SSIM {percentile}th percentile: {score} for example {idx}.")
+
+        filename = dataset.files["test"][idx]
+
+        _, label, weight, filename = dataset.get_example(
+            filename=filename,
+            phase='test',
+            toinputs=toinputs,
+            tooutputs=tooutputs,
+        )
+        label = label['vint']
+        label = meta.postprocess(label)
+        weight = weight['vint']
+
+        pred = dataset.generator.read_predictions(filename, "Steep")
+        pred = pred['vint']
+        pred = meta.postprocess(pred)
+        std = dataset.generator.read_predictions(filename, "Steep_std")
+        std = std['vint'] * diff
+
+        crop_top = np.nonzero(np.diff(label, axis=0).any(axis=1))[0][1] * .95
+        crop_top = int(crop_top)
+        label = label[crop_top:]
+        weight = weight[crop_top:]
+        pred = pred[crop_top:]
+        std = std[crop_top:]
+
+        start_time = crop_top*dt - tdelay
+        time = np.arange(len(label))*dt + start_time
+
+        for array, ax in zip([pred, label], row_axs[:2]):
+            im, = meta.plot(array, weights=weight, axs=[ax])
+            im.set_extent(
+                [cmps.min(), cmps.max(), time.max(), time.min()]
+            )
+            ax.set_title("")
+            cbar = im.colorbar
+            if cbar is not None:
+                cbar.remove()
+
+        line_ax = row_axs[-1]
+        y_min, y_max = time.min(), time.max()
+        y_values = time
+        for array, name, zorder, ax in zip(
+            [pred, label], ['Estimate', 'Ground truth'], [1, 0], row_axs[:2],
+        ):
+            slice = array[:, array.shape[1] // 2] / 1000
+            line_ax.plot(
+                slice, y_values, lw=.5, zorder=0, label=name,
+            )
+
+            if array is pred:
+                slice_std = std[:, std.shape[1] // 2] / 1000
+                line_ax.fill_betweenx(
+                    y_values,
+                    slice-slice_std,
+                    slice+slice_std,
+                    lw=0,
+                    alpha=.4,
+                )
+
+            height = y_max-y_min
+            x = cmps[array.shape[1]//2]
+            dcmp = cmps[1] - cmps[2]
+            rect = Rectangle(
+                xy=(x-.5*dcmp, y_min+.01*height),
+                width=dcmp,
+                height=height*.98,
+                ls=(0, (5, 5)),
+                lw=.5,
+                ec='w',
+                fc='none',
+            )
+            ax.add_patch(rect)
+
+        line_ax.set_xlim(vmin/1000, vmax/1000)
+        line_ax.set_ylim(y_max, y_min)
+        line_ax.set_yticklabels([])
+        line_ax.grid()
+
+    legend = axs[0, -1].legend(
+        loc='lower center',
+        bbox_to_anchor=(.6, 1.125),
+        fontsize=6,
+        handlelength=.2,
+    )
+    for line in legend.get_lines():
+        line.set_linewidth(2)
+    for ax in axs[:, 1:].flatten():
+        ax.set_yticklabels([])
+    for ax in axs[:-1].flatten():
+        ax.set_xticklabels([])
+    axs[-1, -1].set_xlabel("$v_\\mathrm{int}(t, x)$ (km/s)")
+    for ax in axs[:, 0]:
+        ax.set_ylabel("$t$ (s)")
+    for ax in axs.flatten():
+        ax.tick_params(which='minor', length=2)
+        ax.minorticks_on()
+        ax.yaxis.set_tick_params(which='both', labelleft=True)
+    for ax in axs[-1, :-1]:
+        ax.set_xlabel("$x$ (km)")
+
+    ticks = np.arange(2000, 5000, 1000)
+    cax = fig.add_subplot(3, 3, (1, 2))
+    left, bottom, width, height = cax.get_position().bounds
+    bottom += 1.2 * height
+    height /= 8
+    width /= 2
+    left += width / 2
+    cax.set_position([left, bottom, width, height])
+    cbar = plt.colorbar(axs[0, 0].images[0], cax=cax, orientation='horizontal')
+    cbar.ax.set_xlabel("$v_\\mathrm{int}(t, x)$ (km/s)")
+    cbar.ax.xaxis.set_label_position('top')
+    cbar.ax.xaxis.set_ticks_position('top')
+    cbar.set_ticks(ticks)
+    cbar.set_ticklabels(ticks/1000)
+
+    for ax, letter in zip(axs.flatten(), range(ord('a'), ord('i')+1)):
+        letter = f"({chr(letter)})"
+        plt.sca(ax)
+        x0, _ = plt.xlim()
+        y1, y0 = plt.ylim()
+        height = y1 - y0
+        plt.text(x0, y0-.02*height, letter, va='bottom')
+
+    plt.savefig(
+        join(FIGURES_DIR, 'examples_steep.png'), bbox_inches="tight", dpi=1000,
+    )
+    if plot:
+        plt.gcf().set_dpi(200)
+        plt.show()
+    else:
+        plt.clf()
+
+
 def plot_marmousi(dataset, plot=True):
     filename = join(dataset.basepath, dataset.name, "test", "example_0")
     inputs, labels, _ = dataset.generator.read(filename)
-    pretrained = dataset.generator.read_predictions(filename, "Steep")
-    pretrained = {name: pretrained[name] for name in TOOUTPUTS}
     preds = dataset.generator.read_predictions(filename, "Steep")
     preds = {name: preds[name] for name in TOOUTPUTS}
 
-    # d = inputs['shotgather'][:]
-    # d = d.reshape([d.shape[0], -1, 72])
-    # vmax = np.amax(d)
-    # for i, gather in enumerate(np.moveaxis(d, 1, 0)):
-    #     if i not in [5, 50, 90]:
-    #         continue
-    #     plt.figure(figsize=[2, 4], dpi=200)
-    #     plt.imshow(gather, aspect='auto', vmin=0, vmax=.02*vmax, cmap='Greys')
-    #     plt.show()
-    # plt.figure(figsize=[2, 4], dpi=200)
-    # plt.imshow(d[:, :, 0], aspect='auto', vmin=0, vmax=.02*vmax, cmap='Greys')
-    # plt.show()
-
     fig, axs = plt.subplots(
         ncols=2,
-        nrows=3,
-        figsize=[4.33, 5],
+        nrows=2,
+        figsize=[4.33, 4],
         constrained_layout=False,
         gridspec_kw={"width_ratios": [95, 5], "hspace": .3, "wspace": .05},
     )
@@ -1622,21 +1782,15 @@ def plot_marmousi(dataset, plot=True):
     label_vint, _ = dataset.outputs['vint'].generate(None, props)
     label_vint, _ = dataset.outputs['vint'].preprocess(label_vint, None)
     label_vint = vint_meta.postprocess(label_vint)
-    # label_vint = labels['vint']
-    pretrained_vint = vint_meta.postprocess(pretrained['vint'])
     pred_vint = vint_meta.postprocess(preds['vint'])
     label_vint = label_vint[crop_top:crop_bottom]
-    pretrained_vint = pretrained_vint[crop_top:crop_bottom]
     pred_vint = pred_vint[crop_top:crop_bottom]
 
     vint_meta.plot(
         label_vint, axs=[axs[0]], vmin=1500, vmax=4500, cmap='inferno',
     )
     vint_meta.plot(
-        pretrained_vint, axs=[axs[1]], vmin=1500, vmax=4500, cmap='inferno',
-    )
-    vint_meta.plot(
-        pred_vint, axs=[axs[2]], vmin=1500, vmax=4500, cmap='inferno',
+        pred_vint, axs=[axs[1]], vmin=1500, vmax=4500, cmap='inferno',
     )
 
     extent = [cmps.min()/1000, cmps.max()/1000, END_TIME, start_time]
@@ -1665,7 +1819,7 @@ def plot_marmousi(dataset, plot=True):
     cbar.set_ticks(range(2000, 5000, 1000))
     cbar.set_ticklabels(range(2, 5, 1))
 
-    for ax, letter in zip(axs, range(ord('a'), ord('e')+1)):
+    for ax, letter in zip(axs, range(ord('a'), ord('b')+1)):
         letter = f"({chr(letter)})"
         plt.sca(ax)
         x0, _ = plt.xlim()
