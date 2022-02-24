@@ -94,6 +94,7 @@ def main(args):
             args.logdir_2d + '_steep',
             args.gpus,
             "Steep",
+            batch_size=1,
         )
         launch_inference(
             RCNN2D,
@@ -744,7 +745,7 @@ def plot_ensemble(dataset, output_name, filename, plot):
         nrows=2,
         ncols=4,
         figsize=[6.5, 3.33],
-        constrained_layout=True,
+        constrained_layout=False,
         gridspec_kw={"width_ratios": [*(1 for _ in range(3)), .2]},
     )
     cax_std = axs[0, -1]
@@ -1418,7 +1419,7 @@ def plot_ensemble_real(dataset, output_name, plot):
         nrows=5,
         ncols=2,
         figsize=[3.33, 5],
-        constrained_layout=True,
+        constrained_layout=False,
         gridspec_kw={"width_ratios": [1, .1], "hspace": .3},
     )
     cax = axs[0, -1]
@@ -1597,7 +1598,7 @@ def plot_examples_steep(dataset, plot=True):
     similarities = compare_preds(dataset, "Steep")
     for percentile, row_axs in zip([90, 50, 10], axs):
         score = np.percentile(
-            similarities, percentile, interpolation="nearest",
+            similarities, percentile, interpolation="higher",
         )
         idx = np.argwhere(score == similarities)[0, 0]
         print(f"SSIM {percentile}th percentile: {score} for example {idx}.")
