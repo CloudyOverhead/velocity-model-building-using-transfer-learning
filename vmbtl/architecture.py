@@ -178,7 +178,6 @@ class Hyperparameters2D(Hyperparameters1D):
                 join(".", "logs", "weights_1d", "0", "checkpoint_60")
             )
             self.restore_from = (CHECKPOINT_1D, None, None)
-            self.seed = (3, 4, 5)
 
 
 class Hyperparameters2DNoTL(Hyperparameters2D):
@@ -195,10 +194,9 @@ class Hyperparameters2DSteep(Hyperparameters2D):
             CHECKPOINT_2D = abspath(
                 join(".", "logs", "weights_2d", "0", "checkpoint_120")
             )
-            self.restore_from = CHECKPOINT_2D
+            self.restore_from = (CHECKPOINT_2D, None, None)
             self.loss_scales = (
                 {'ref': .6, 'vrms': .3, 'vint': .1, 'vdepth': .0},
                 {'ref': .1, 'vrms': .7, 'vint': .2, 'vdepth': .0},
                 {'ref': .1, 'vrms': .3, 'vint': .5, 'vdepth': .1},
             )
-            self.seed = (6, 7, 8)
