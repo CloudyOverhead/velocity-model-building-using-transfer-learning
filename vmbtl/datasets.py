@@ -224,7 +224,7 @@ class Article2DSteep(Article2D):
         model, acquire, inputs, outputs = super().set_dataset()
 
         self.trainsize = 2000
-        self.testsize = 10
+        self.testsize = 100
 
         model.NX = int(7000 / 5)
         model.NZ = int(2800 / 5)
@@ -237,20 +237,20 @@ class Article2DSteep(Article2D):
         model.dzmax = 1200
         model.accept_decrease = .65
         model.max_deform_freq = .01
-        model.min_deform_freq = .0001
-        model.amp_max = 80
-        model.max_deform_nfreq = 40
-        model.prob_deform_change = .1
+        model.min_deform_freq = .0005
+        model.amp_max = 160
+        model.max_deform_nfreq = 20
+        model.prob_deform_change = .2
         model.deform_cumulative = True
 
         model.fault_dip_min = 35
         model.fault_dip_max = 89
-        model.fault_displ_min = -1000
+        model.fault_displ_min = -800
         model.fault_displ_max = 0
         model.fault_x_lim = [int(.25*model.NX), int(.75*model.NX)]
         model.fault_y_lim = [int(.25*model.NZ), int(.75*model.NZ)]
         model.fault_nmax = 3
-        model.fault_prob = [.5, .2, .1]
+        model.fault_prob = [.4, .3, .2]
         model.generate_model = self.decorate_generate_model(model)
 
         acquire.dt = .0002
@@ -261,9 +261,6 @@ class Article2DSteep(Article2D):
         acquire.gmin = 0
         acquire.gmax = int(4000 / model.dh)
         acquire.minoffset = 0
-        # acquire.peak_freq = 7
-        # acquire.df = 2
-        # acquire.wavefuns = [0, 1]
         acquire.source_depth = (acquire.Npad+4) * model.dh
         acquire.receiver_depth = (acquire.Npad+4) * model.dh
         acquire.tdelay = 3.0 / (acquire.peak_freq-acquire.df)
