@@ -782,9 +782,9 @@ def plot_ensemble(dataset, output_name, filename, plot):
     similarities = np.array([])
     rmses = np.array([])
     for pred in ensemble:
-        similarity = ssim(mean*weight, pred*weight)
+        similarity = ssim(label*weight, pred*weight)
         similarities = np.append(similarities, similarity)
-        rmse = np.sqrt(np.mean((mean*weight-pred*weight)**2))
+        rmse = np.sqrt(np.mean((label*weight-pred*weight)**2))
         rmses = np.append(rmses, rmse)
     vmin, vmax = dataset.model.properties['vp']
     rmses *= vmax - vmin
@@ -1736,6 +1736,8 @@ def plot_examples_steep(dataset, plot=True):
 
 
 def plot_marmousi(dataset, plot=True):
+    compare_preds(dataset, "Steep")
+
     filename = join(dataset.basepath, dataset.name, "test", "example_0")
     inputs, labels, _ = dataset.generator.read(filename)
     preds = dataset.generator.read_predictions(filename, "Steep")
@@ -1883,9 +1885,9 @@ def plot_ensemble_marmousi(dataset, plot):
     similarities = np.array([])
     rmses = np.array([])
     for pred in ensemble:
-        similarity = ssim(mean*weight, pred*weight)
+        similarity = ssim(label*weight, pred*weight)
         similarities = np.append(similarities, similarity)
-        rmse = np.sqrt(np.mean((mean*weight-pred*weight)**2))
+        rmse = np.sqrt(np.mean((label*weight-pred*weight)**2))
         rmses = np.append(rmses, rmse)
     vmin, vmax = dataset.model.properties['vp']
     rmses *= vmax - vmin
