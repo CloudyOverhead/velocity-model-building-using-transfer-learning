@@ -111,6 +111,7 @@ def main(args):
         compare_preds(dataset, savedir="NoTransferLearning" + lr)
     similarities = compare_preds(dataset, savedir="EndResults")
 
+    plot_error(dataset, plot=args.plot)
 
     for percentile in [10, 50, 90]:
         score = np.percentile(
@@ -150,10 +151,9 @@ def main(args):
             output_name=output_name,
             plot=args.plot,
         )
-    plot_error(dataset, plot=args.plot)
+    plot_examples_steep(dataset=dataset_steep, plot=args.plot)
     plot_marmousi(dataset=dataset_marmousi, plot=args.plot)
     plot_ensemble_marmousi(dataset=dataset_marmousi, plot=args.plot)
-    plot_examples_steep(dataset=dataset_steep, plot=args.plot)
 
 
 def launch_both_inferences(args, nn, dataset, batch_size=None):
