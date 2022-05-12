@@ -351,13 +351,21 @@ def plot_error(dataset, plot=True):
     fig, axs = plt.subplots(nrows=3, figsize=[3.33, 7.5], sharex=True)
 
     for i, (ax, y) in enumerate(zip(axs, bins[:-1])):
-        other_axis = tuple(axis for axis in range(4) if axis not in [i, 3])
-        errors = np.sum(hist, axis=other_axis)
-        errors = np.log10(errors)
         x = bins[-1]
         x = np.repeat(x[None, :], len(x), axis=0)
         y = np.repeat(y[::-1, None], len(bins[-1]), axis=1)
+        other_axis = tuple(axis for axis in range(4) if axis not in [i, 3])
+        errors = np.sum(hist, axis=other_axis)
+        average = np.ma.average(
+            (x[:-1, 1:]+x[1:, 1:])/2,
+            axis=-1,
+            weights=errors,
+        )
+        errors = np.log10(errors)
         ax.pcolor(x, y, errors[::-1], cmap='Greys')
+        if i in [0, 2]:
+            y = (y[:-1, 0]+y[1:, 1]) / 2
+            ax.plot(average[::-1], y, lw=1, ls='--', c='k')
 
     axs[-1].set_xlabel("RMSE (m/s)")
     axs[0].set_ylabel("$v_\\mathrm{int}(t, x)$ (m/s)")
@@ -683,7 +691,7 @@ def plot_example(dataset, filename, figure_name, plot=True):
     for i, current_ticks in enumerate(ticks):
         cax = fig.add_subplot(gs[i+2, -1])
         cbar = plt.colorbar(axs[i+3].images[0], cax=cax)
-        cbar.ax.set_ylabel(f"Velocity (km/s)")
+        cbar.ax.set_ylabel("Velocity (km/s)")
         cbar.set_ticks(current_ticks)
         cbar.set_ticklabels(current_ticks/1000)
 
