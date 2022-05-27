@@ -308,26 +308,15 @@ class Marmousi(Article2DSteep):
 
         acquire.NT = int(3 / acquire.dt)
 
-        inputs = {ShotGather.name: ShotGather(model=model, acquire=acquire)}
-        outputs = {
-            Reftime.name: Reftime(model=model, acquire=acquire),
-            Vrms.name: Vrms(model=model, acquire=acquire),
-            Vint.name: Vint(model=model, acquire=acquire),
-            Vdepth.name: Vdepth(model=model, acquire=acquire),
-        }
-        for input in inputs.values():
-            input.mute_dir = True
-            input.train_on_shots = False
-        for output in outputs.values():
-            input.train_on_shots = False
-            output.identify_direct = False
-
         return model, acquire, inputs, outputs
 
     def load_model(self, *args, **kwargs):
         filepath = join(self.basepath, self.name, self.FILENAME)
         if not exists(filepath):
-            makedirs(join(self.basepath, self.name))
+            try:
+                makedirs(join(self.basepath, self.name))
+            except FileExistsError:
+                pass
             urlretrieve(self.URL, filename=filepath + '.gz')
             with gzip.open(filepath + '.gz', 'rb') as compressed_f:
                 with open(filepath, 'wb') as decompressed_f:
