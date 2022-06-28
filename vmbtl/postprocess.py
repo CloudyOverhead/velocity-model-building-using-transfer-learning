@@ -1998,7 +1998,7 @@ def plot_ensemble_marmousi(dataset, plot):
     cbar = plt.colorbar(axs[0, -1].images[0], cax=cax_std)
     cbar.ax.set_ylabel("Standard\ndeviation\n(km/s)")
     cbar.set_ticks(np.arange(0, 1000, 300))
-    cbar.set_ticklabels(np.arange(0, 1, .3))
+    cbar.set_ticklabels(np.around(np.arange(0, 1, .3), 1))
 
     cbar = plt.colorbar(axs[0, 0].images[0], cax=cax)
     cbar.ax.set_ylabel("Velocity\n(km/s)")
