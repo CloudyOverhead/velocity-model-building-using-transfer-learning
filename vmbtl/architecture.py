@@ -150,9 +150,9 @@ class Hyperparameters1D(Hyperparameters):
 
         if is_training:
             self.loss_scales = (
-                {'ref': .6, 'vrms': .3, 'vint': .1, 'vdepth': .0},
-                {'ref': .1, 'vrms': .7, 'vint': .2, 'vdepth': .0},
-                {'ref': .1, 'vrms': .3, 'vint': .5, 'vdepth': .1},
+                {'ref': .5, 'vrms': .3, 'vint': .1, 'vdepth': .1},
+                {'ref': .1, 'vrms': .5, 'vint': .2, 'vdepth': .2},
+                {'ref': .1, 'vrms': .1, 'vint': .4, 'vdepth': .4},
             )
             self.seed = (0, 1, 2)
 
@@ -186,17 +186,44 @@ class Hyperparameters2DNoTL(Hyperparameters2D):
         self.restore_from = None
 
 
+class Hyperparameters1DSteep(Hyperparameters1D):
+    def __init__(self, is_training=True):
+        super().__init__(is_training=is_training)
+
+        self.encoder_kernels = [
+            [15, 1, 1],
+            [1, 9, 1],
+        ]
+        self.encoder_kernels *= 4
+        self.encoder_dilations = [[1, 1, 1]] * 8
+        self.encoder_filters = [16, 16, 16, 16, 32, 32, 32, 32]
+
+        self.rcnn_kernel = [15, 3, 1]
+
+        self.use_cnn = True
+        self.cnn_kernel = [15, 1]
+        self.cnn_filters = 32
+        self.cnn_dilation = [1, 1]
+
+
 class Hyperparameters2DSteep(Hyperparameters2D):
     def __init__(self, is_training=True):
         super().__init__(is_training=is_training)
         self.learning_rate = 8E-5
+
+        self.encoder_kernels = [
+            [15, 1, 1],
+            [1, 9, 1],
+            [1, 1, 5],
+        ]
+        self.encoder_kernels *= 4
+        self.encoder_dilations = [[1, 1, 1]] * 12
+        self.encoder_filters = [16]*6 + [32]*6
+
+        self.freeze = ["rnn['vrms']", "rnn['vint']"]
+
         if is_training:
             CHECKPOINT_2D = abspath(
-                join(".", "logs", "weights_2d", "0", "checkpoint_120")
+                join(".", "logs", "weights_1d_steep", "0", "checkpoint_000060")
             )
             self.restore_from = (CHECKPOINT_2D, None, None)
-            self.loss_scales = (
-                {'ref': .6, 'vrms': .3, 'vint': .1, 'vdepth': .0},
-                {'ref': .1, 'vrms': .7, 'vint': .2, 'vdepth': .0},
-                {'ref': .1, 'vrms': .3, 'vint': .5, 'vdepth': .1},
-            )

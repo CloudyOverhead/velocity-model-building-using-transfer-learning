@@ -12,7 +12,6 @@ import pandas as pd
 from matplotlib import pyplot as plt
 from matplotlib.patches import Rectangle
 from matplotlib.colors import TABLEAU_COLORS
-from matplotlib.ticker import ScalarFormatter
 from scipy.ndimage import gaussian_filter
 from skimage.measure import compare_ssim as ssim
 from tensorflow.compat.v1.train import summary_iterator
@@ -94,7 +93,6 @@ def main(args):
             args.logdir_2d + '_steep',
             args.gpus,
             "Steep",
-            batch_size=1,
         )
         launch_inference(
             RCNN2D,
@@ -1586,9 +1584,8 @@ def plot_examples_steep(dataset, plot=True):
 
     fig, axs = plt.subplots(
         nrows=3,
-        ncols=3,
-        gridspec_kw={'width_ratios': [1, 1, .5]},
-        figsize=[4.3, 4.3],
+        ncols=1,
+        figsize=[3.3, 6],
         constrained_layout=False,
     )
 
@@ -1639,7 +1636,7 @@ def plot_examples_steep(dataset, plot=True):
         start_time = crop_top*dt - tdelay
         time = np.arange(len(label))*dt + start_time
 
-        for array, ax in zip([pred, label], row_axs[:2]):
+        for array, ax in zip([label], [row_axs]):
             im, = meta.plot(array, weights=weight, axs=[ax])
             im.set_extent(
                 [cmps.min(), cmps.max(), time.max(), time.min()]
@@ -1649,90 +1646,32 @@ def plot_examples_steep(dataset, plot=True):
             if cbar is not None:
                 cbar.remove()
 
-        line_ax = row_axs[-1]
-        y_min, y_max = time.min(), time.max()
-        y_values = time
-        for array, name, zorder, ax in zip(
-            [pred, label], ['Estimate', 'Ground truth'], [1, 0], row_axs[:2],
-        ):
-            slice = array[:, array.shape[1] // 2] / 1000
-            line_ax.plot(
-                slice, y_values, lw=.5, zorder=0, label=name,
-            )
-
-            if array is pred:
-                slice_std = std[:, std.shape[1] // 2] / 1000
-                line_ax.fill_betweenx(
-                    y_values,
-                    slice-slice_std,
-                    slice+slice_std,
-                    lw=0,
-                    alpha=.4,
-                )
-
-            height = y_max-y_min
-            x = cmps[array.shape[1]//2]
-            dcmp = cmps[1] - cmps[2]
-            rect = Rectangle(
-                xy=(x-.5*dcmp, y_min+.01*height),
-                width=dcmp,
-                height=height*.98,
-                ls=(0, (5, 5)),
-                lw=.5,
-                ec='w',
-                fc='none',
-            )
-            ax.add_patch(rect)
-
-        line_ax.set_xlim(vmin/1000, vmax/1000)
-        line_ax.set_ylim(y_max, y_min)
-        line_ax.set_yticklabels([])
-        line_ax.grid()
-
-    legend = axs[0, -1].legend(
-        loc='lower center',
-        bbox_to_anchor=(.6, 1.125),
-        fontsize=6,
-        handlelength=.2,
-    )
-    for line in legend.get_lines():
-        line.set_linewidth(2)
-    for ax in axs[:, 1:].flatten():
-        ax.set_yticklabels([])
     for ax in axs[:-1].flatten():
         ax.set_xticklabels([])
-    axs[-1, -1].set_xlabel("$v_\\mathrm{int}(t, x)$ (km/s)")
-    for ax in axs[:, 0]:
+    axs[-1].set_xlabel("$v_\\mathrm{int}(t, x)$ (km/s)")
+    for ax in axs[:]:
         ax.set_ylabel("$t$ (s)")
     for ax in axs.flatten():
         ax.tick_params(which='minor', length=2)
         ax.minorticks_on()
         ax.yaxis.set_tick_params(which='both', labelleft=True)
-    for ax in axs[-1, :-1]:
+    for ax in [axs[-1]]:
         ax.set_xlabel("$x$ (km)")
 
     ticks = np.arange(2000, 5000, 1000)
-    cax = fig.add_subplot(3, 3, (1, 2))
+    cax = fig.add_subplot(3, 1, 1)
     left, bottom, width, height = cax.get_position().bounds
     bottom += 1.2 * height
     height /= 8
     width /= 2
     left += width / 2
     cax.set_position([left, bottom, width, height])
-    cbar = plt.colorbar(axs[0, 0].images[0], cax=cax, orientation='horizontal')
+    cbar = plt.colorbar(axs[0].images[0], cax=cax, orientation='horizontal')
     cbar.ax.set_xlabel("$v_\\mathrm{int}(t, x)$ (km/s)")
     cbar.ax.xaxis.set_label_position('top')
     cbar.ax.xaxis.set_ticks_position('top')
     cbar.set_ticks(ticks)
     cbar.set_ticklabels(ticks/1000)
-
-    for ax, letter in zip(axs.T.flatten(), range(ord('a'), ord('i')+1)):
-        letter = f"({chr(letter)})"
-        plt.sca(ax)
-        x0, _ = plt.xlim()
-        y1, y0 = plt.ylim()
-        height = y1 - y0
-        plt.text(x0, y0-.02*height, letter, va='bottom')
 
     plt.savefig(
         join(FIGURES_DIR, 'examples_steep.png'), bbox_inches="tight", dpi=1000,

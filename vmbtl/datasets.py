@@ -18,8 +18,15 @@ from GeoFlow.GeoDataset import GeoDataset
 from GeoFlow.EarthModel import MarineModel
 from GeoFlow.SeismicGenerator import Acquisition
 from GeoFlow.GraphIO import Reftime, Vrms, Vint, Vdepth, ShotGather
+from GeoFlow.SeismicUtilities import sortcmp
 
 from vmbtl.download_real_test_data import NS
+
+
+def compute_ncmp(dataset):
+    src_pos, rec_pos = dataset.acquire.set_rec_src()
+    _, cmps = sortcmp(None, src_pos, rec_pos)
+    return len(cmps)
 
 
 class Dataset(GeoDataset):
@@ -30,7 +37,7 @@ class Article1D(Dataset):
     def set_dataset(self):
         self.trainsize = 20000
         self.validatesize = 0
-        self.testsize = 10
+        self.testsize = 200
 
         model = MarineModel()
         model.dh = 6.25
@@ -125,7 +132,7 @@ class Article2D(Article1D):
             input.train_on_shots = False
             input.mute_dir = True
         for output in outputs.values():
-            input.train_on_shots = False
+            output.train_on_shots = False
             output.identify_direct = False
 
         return model, acquire, inputs, outputs
@@ -159,7 +166,7 @@ class USGS(Article2D):
             input.train_on_shots = False
             input.preprocess = decorate_preprocess(input)
         for output in outputs.values():
-            input.train_on_shots = False
+            output.train_on_shots = False
             output.identify_direct = False
 
         return model, acquire, inputs, outputs
@@ -219,39 +226,18 @@ def decorate_preprocess(self):
     return preprocess_real_data
 
 
-class Article2DSteep(Article2D):
+class Article1DSteep(Article1D):
     def set_dataset(self):
         model, acquire, inputs, outputs = super().set_dataset()
-
-        self.trainsize = 2000
-        self.testsize = 100
 
         model.NX = int(7000 / 5)
         model.NZ = int(2800 / 5)
         model.dh = 1.25 * 5
-        model.dip_max = 45
-        model.ddip_max = 8
         model.water_dmin = 450
         model.water_dmax = 1200
-        model.vp_max = 4500
-        model.dzmax = 1200
+        model.vp_max = 5000.0
+        model.dzmax = 2500
         model.accept_decrease = .65
-        model.max_deform_freq = .01
-        model.min_deform_freq = .0005
-        model.amp_max = 160
-        model.max_deform_nfreq = 20
-        model.prob_deform_change = .2
-        model.deform_cumulative = True
-
-        model.fault_dip_min = 35
-        model.fault_dip_max = 89
-        model.fault_displ_min = -800
-        model.fault_displ_max = 0
-        model.fault_x_lim = [int(.25*model.NX), int(.75*model.NX)]
-        model.fault_y_lim = [int(.25*model.NZ), int(.75*model.NZ)]
-        model.fault_nmax = 3
-        model.fault_prob = [.4, .3, .2]
-        model.generate_model = self.decorate_generate_model(model)
 
         acquire.dt = .0002
         acquire.resampling = 10
@@ -265,6 +251,50 @@ class Article2DSteep(Article2D):
         acquire.receiver_depth = (acquire.Npad+4) * model.dh
         acquire.tdelay = 3.0 / (acquire.peak_freq-acquire.df)
         acquire.configuration = 'inline'
+
+        outputs = {
+            Output.name: Output(model=model, acquire=acquire)
+            for Output in [
+                ReftimeNoWeights,
+                VrmsNoWeights,
+                VintNoWeights,
+                VdepthNoWeights,
+            ]
+        }
+
+        for input in inputs.values():
+            input.train_on_shots = True  # 1D shots are CMPs.
+            input.mute_dir = True
+        for output in outputs.values():
+            output.train_on_shots = True
+            output.identify_direct = False
+
+        return model, acquire, inputs, outputs
+
+
+class Article2DSteep(Article1DSteep):
+    def set_dataset(self):
+        model, acquire, inputs, outputs = super().set_dataset()
+
+        self.trainsize = 2000
+        self.testsize = 100
+
+        model.dip_max = 80
+        model.ddip_max = 80
+        model.max_deform_freq = .06
+        model.min_deform_freq = .0001
+        model.amp_max = 16
+        model.max_deform_nfreq = 20
+        model.prob_deform_change = .2
+        model.deform_cumulative = True
+        model.generate_model = self.decorate_generate_model(model)
+
+        acquire.singleshot = False
+
+        for input in inputs.values():
+            input.train_on_shots = False
+        for output in outputs.values():
+            output.train_on_shots = False
 
         return model, acquire, inputs, outputs
 
@@ -300,7 +330,7 @@ class Marmousi(Article2DSteep):
 
         model.generate_model = self.load_model
         if acquire.gmax is not None:
-            self.lateral_pad = int(acquire.Npad + acquire.gmax/2)
+            self.lateral_pad = int(acquire.Npad + acquire.gmax)
         else:
             self.lateral_pad = 0
         model.NX = int(self.NX*self.RESCALE_FACTOR+2*self.lateral_pad)
@@ -444,6 +474,38 @@ class ShotGatherCrop(ShotGather):
     def plot(self, *args, **kwargs):
         with CropAcquisition(self.acquire):
             return super().plot(*args, **kwargs)
+
+
+class ReftimeNoWeights(Reftime):
+    def preprocess(self, label, weight):
+        label, weight = super().preprocess(label, weight)
+        if weight is not None:
+            weight[:] = 1
+        return label, weight
+
+
+class VrmsNoWeights(Vrms):
+    def preprocess(self, label, weight):
+        label, weight = super().preprocess(label, weight)
+        if weight is not None:
+            weight[:] = 1
+        return label, weight
+
+
+class VintNoWeights(Vint):
+    def preprocess(self, label, weight):
+        label, weight = super().preprocess(label, weight)
+        if weight is not None:
+            weight[:] = 1
+        return label, weight
+
+
+class VdepthNoWeights(Vdepth):
+    def preprocess(self, label, weight):
+        label, weight = super().preprocess(label, weight)
+        if weight is not None:
+            weight[:] = 1
+        return label, weight
 
 
 class CropAcquisition:
