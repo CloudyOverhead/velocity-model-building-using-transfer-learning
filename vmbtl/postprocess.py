@@ -13,21 +13,26 @@ from matplotlib import pyplot as plt
 from matplotlib.patches import Rectangle
 from matplotlib.colors import TABLEAU_COLORS
 from scipy.ndimage import gaussian_filter
-from skimage.metrics import structural_similarity as ssim
+from skimage.measure import compare_ssim as ssim
 from tensorflow.compat.v1.train import summary_iterator
 from GeoFlow.__main__ import int_or_list
-from GeoFlow.SeismicUtilities import sortcmp, stack, semblance_gather
+from GeoFlow.SeismicUtilities import (
+    sortcmp, stack, semblance_gather, nmo_correction, vint2vrms,
+)
 
 from vmbtl.__main__ import main as global_main
 from vmbtl.architecture import (
     RCNN2D, RCNN2DUnpackReal, Hyperparameters1D, Hyperparameters2D,
-    Hyperparameters2DNoTL,
+    Hyperparameters2DNoTL, Hyperparameters2DSteep,
 )
-from vmbtl.datasets import Article2D, USGS
+from vmbtl.datasets import Article2D, USGS, Article2DSteep, Marmousi
 
 FIGURES_DIR = "figures"
 TOINPUTS = ['shotgather']
 TOOUTPUTS = ['ref', 'vrms', 'vint', 'vdepth']
+IGNORE_NNS = [2, 9]
+SORTED_NNS = sorted([str(i) for i in range(16)])
+IGNORE_IDX = [SORTED_NNS.index(str(i)) for i in IGNORE_NNS]
 
 plt.rcParams.update(
     {
@@ -51,6 +56,10 @@ def main(args):
     dataset_train._getfilelist()
     dataset_real = USGS()
     dataset_real._getfilelist()
+    dataset_marmousi = Marmousi()
+    dataset_marmousi._getfilelist()
+    dataset_steep = Article2DSteep()
+    dataset_steep._getfilelist()
 
     if not exists(FIGURES_DIR):
         makedirs(FIGURES_DIR)
@@ -65,22 +74,43 @@ def main(args):
             "Training",
         )
         launch_both_inferences(args, RCNN2D, dataset)
+        for lr in ['8E-4', '8E-5']:
+            launch_inference(
+                RCNN2D,
+                Hyperparameters2DNoTL(is_training=False),
+                dataset,
+                args.logdir_2d_no_tl + '_' + lr,
+                args.gpus,
+                "NoTransferLearning" + lr,
+            )
+        launch_both_inferences(
+            args, RCNN2DUnpackReal, dataset_real, batch_size=2,
+        )
         launch_inference(
             RCNN2D,
-            Hyperparameters2DNoTL(is_training=False),
-            dataset,
-            args.logdir_2d_no_tl,
+            Hyperparameters2DSteep(is_training=False),
+            dataset_steep,
+            args.logdir_2d + '_steep',
             args.gpus,
-            "NoTransferLearning",
+            "Steep",
         )
-        launch_both_inferences(args, RCNN2DUnpackReal, dataset_real)
+        launch_inference(
+            RCNN2D,
+            Hyperparameters2DSteep(is_training=False),
+            dataset_marmousi,
+            args.logdir_2d + '_steep',
+            args.gpus,
+            "Steep",
+            batch_size=1,
+        )
 
     compare_preds(dataset_train, savedir="Training")
     compare_preds(dataset, savedir="Pretraining")
-    compare_preds(dataset, savedir="NoTransferLearning")
-    inputs, labels, weights, preds, similarities = compare_preds(
-        dataset, savedir="EndResults",
-    )
+    for lr in ['8E-4', '8E-5']:
+        compare_preds(dataset, savedir="NoTransferLearning" + lr)
+    similarities = compare_preds(dataset, savedir="EndResults")
+
+    plot_error(dataset, plot=args.plot)
 
     for percentile in [10, 50, 90]:
         score = np.percentile(
@@ -120,29 +150,50 @@ def main(args):
             output_name=output_name,
             plot=args.plot,
         )
+    plot_examples_steep(dataset=dataset_steep, plot=args.plot)
+    plot_marmousi(dataset=dataset_marmousi, plot=args.plot)
+    plot_ensemble_marmousi(dataset=dataset_marmousi, plot=args.plot)
 
 
-def launch_both_inferences(args, nn, dataset):
+def launch_both_inferences(args, nn, dataset, batch_size=None):
     params_1d = Hyperparameters1D(is_training=False)
-    params_1d.batch_size = 2
     params_2d = Hyperparameters2D(is_training=False)
     for logdir, savedir, params in zip(
         [args.logdir_1d, args.logdir_2d],
         ["Pretraining", "EndResults"],
         [params_1d, params_2d],
     ):
-        launch_inference(nn, params, dataset, logdir, args.gpus, savedir)
+        launch_inference(
+            nn=nn,
+            params=params,
+            dataset=dataset,
+            logdir=logdir,
+            gpus=args.gpus,
+            savedir=savedir,
+        )
 
 
-def launch_inference(nn, params, dataset, logdir, gpus, savedir):
+def launch_inference(
+    nn, params, dataset, logdir, gpus, savedir, batch_size=None,
+):
     print("Launching inference.")
     print("NN:", nn.__name__)
     print("Hyperparameters:", type(params).__name__)
     print("Weights:", logdir)
     print("Case:", savedir)
 
-    logdirs = listdir(logdir)
+    if batch_size is not None:
+        if isinstance(gpus, int) and gpus > batch_size:
+            gpus = batch_size
+        elif isinstance(gpus, list) and len(gpus) > batch_size:
+            gpus = gpus[:batch_size]
+        params = deepcopy(params)
+        params.batch_size = batch_size
+
+    logdirs = sorted(listdir(logdir))
     for i, current_logdir in enumerate(logdirs):
+        if int(current_logdir) in IGNORE_NNS:
+            continue
         print(f"Using NN {i+1} out of {len(logdirs)}.")
         print(f"Started at {datetime.now()}.")
         current_logdir = join(logdir, current_logdir)
@@ -169,10 +220,13 @@ def launch_inference(nn, params, dataset, logdir, gpus, savedir):
 
 def combine_predictions(dataset, logdir, savedir):
     print("Averaging predictions.")
-    logdirs = listdir(logdir)
+    logdirs = sorted(listdir(logdir))
+    dataset._getfilelist()
     for filename in dataset.files["test"]:
         preds = {key: [] for key in dataset.generator.outputs}
-        for i in range(len(logdirs)):
+        for i, current_logdir in enumerate(logdirs):
+            if int(current_logdir) in IGNORE_NNS:
+                continue
             current_load_dir = f"{savedir}_{i}"
             current_preds = dataset.generator.read_predictions(
                 filename, current_load_dir,
@@ -201,6 +255,145 @@ def combine_predictions(dataset, logdir, savedir):
 
 def compare_preds(dataset, savedir):
     print(f"Comparing predictions for directory {savedir}.")
+
+    nt = dataset.acquire.NT
+    dt = dataset.acquire.dt
+    resampling = dataset.acquire.resampling
+    time = np.arange(nt // resampling) * dt * resampling
+    time = time[:, None]
+
+    similarities = np.array([])
+    rmses = np.array([])
+    rmses_rms = np.array([])
+
+    for i, example in enumerate(dataset.files["test"]):
+        if (i+1) % 20 == 0:
+            print(f"Processing example {i+1} of {len(dataset.files['test'])}.")
+        _, labels, weights, filename = dataset.get_example(
+            example,
+            phase='test',
+            toinputs=RCNN2D.toinputs,
+            tooutputs=RCNN2D.tooutputs,
+        )
+        preds = dataset.generator.read_predictions(filename, savedir)
+        vint = labels['vint']
+        weight = weights['vint']
+        vint_pred = preds['vint']
+        vrms_pred = preds['vrms']
+
+        vint = vint * weight
+        vint_pred = vint_pred * weight
+        similarity = ssim(vint, vint_pred)
+        similarities = np.append(similarities, similarity)
+        rmse = np.sqrt(np.mean((vint-vint_pred)**2))
+        rmses = np.append(rmses, rmse)
+
+        vrms_pred = vrms_pred * weight
+        vrms_converted = vint2vrms(vint_pred, time)
+        rmse_rms = np.sqrt(np.mean((vrms_pred-vrms_converted)**2))
+        rmses_rms = np.append(rmses_rms, rmse_rms)
+
+    vmin, vmax = dataset.model.properties['vp']
+    rmses *= vmax - vmin
+    print("Average SSIM:", np.mean(similarities))
+    print("Standard deviation on SSIM:", np.std(similarities))
+    print("Average RMSE:", np.mean(rmses))
+    print("Standard deviation on RMSE:", np.std(rmses))
+
+    rmses_rms *= vmax - vmin
+    print("Average RMSE of RMS conversion:", np.mean(rmses_rms))
+    print("Standard deviation on RMSE of RMS conversion:", np.std(rmses_rms))
+
+    return similarities
+
+
+def plot_error(dataset, plot=True):
+    savedir = "EndResults"
+    _, all_labels, all_weights, all_preds = load_all(dataset, savedir)
+
+    rmses = np.array([])
+    thicknesses = np.array([])
+    velocities = np.array([])
+    depths = np.array([])
+    vmin, vmax = dataset.model.properties['vp']
+    dt = dataset.acquire.dt * dataset.acquire.resampling / 2
+    for label, weight, pred in zip(
+        all_labels["vint"], all_weights["vint"], all_preds["vint"],
+    ):
+        label = label * weight
+        pred = pred * weight
+        for slice_label, slice_pred in zip(label.T, pred.T):
+            interfaces = np.nonzero(np.diff(slice_label))
+            interfaces = interfaces[0] + 1
+            current_depth = 0
+            for start, end in zip([0, *interfaces[:-1]], interfaces):
+                temp_label = slice_label[start:end]
+                temp_pred = slice_pred[start:end]
+                rmse = np.sqrt(np.mean((temp_label-temp_pred)**2))
+                velocity = temp_label[0]*(vmax-vmin) + vmin
+                rmses = np.append(rmses, rmse)
+                thicknesses = np.append(thicknesses, end-start)
+                velocities = np.append(velocities, velocity)
+                depths = np.append(depths, current_depth)
+                current_depth += (end-start) * velocity * dt
+    rmses *= vmax - vmin
+    thicknesses *= velocities * dt
+
+    samples = [velocities, thicknesses, depths, rmses]
+    bins = [np.linspace(a.min(), a.max(), 101) for a in samples]
+    log_thicknesses = np.log10(thicknesses)
+    bins[1] = np.logspace(log_thicknesses.min(), log_thicknesses.max(), 101)
+    bins[-1] = np.logspace(np.log10(2), np.log10(1900), 101)
+    hist, _ = np.histogramdd(samples, bins=bins, normed=True)
+
+    fig, axs = plt.subplots(nrows=3, figsize=[3.33, 7.5], sharex=True)
+
+    for i, (ax, y) in enumerate(zip(axs, bins[:-1])):
+        x = bins[-1]
+        x = np.repeat(x[None, :], len(x), axis=0)
+        y = np.repeat(y[::-1, None], len(bins[-1]), axis=1)
+        other_axis = tuple(axis for axis in range(4) if axis not in [i, 3])
+        errors = np.sum(hist, axis=other_axis)
+        average = np.ma.average(
+            (x[:-1, 1:]+x[1:, 1:])/2,
+            axis=-1,
+            weights=errors,
+        )
+        errors = np.log10(errors)
+        ax.pcolor(x, y, errors[::-1], cmap='Greys')
+        if i in [0, 2]:
+            y = (y[:-1, 0]+y[1:, 1]) / 2
+            ax.plot(average[::-1], y, lw=1, ls='--', c='k')
+
+    axs[-1].set_xlabel("RMSE (m/s)")
+    axs[0].set_ylabel("$v_\\mathrm{int}(t, x)$ (m/s)")
+    axs[1].set_ylabel("Thickness (m)")
+    axs[2].set_ylabel("Depth (m)")
+
+    axs[0].set_xscale('log')
+    axs[1].set_yscale('log')
+
+    for ax, letter in zip(axs.flatten(), range(ord('a'), ord('c')+1)):
+        letter = f"({chr(letter)})"
+        plt.sca(ax)
+        x0, _ = plt.xlim()
+        y1, y0 = plt.ylim()
+        height = y1 - y0
+        plt.text(x0, y0-.02*height, letter, va='bottom')
+
+    plt.savefig(
+        join(FIGURES_DIR, "error.png"),
+        bbox_inches="tight",
+        dpi=1200,
+    )
+    if plot:
+        plt.gcf().set_dpi(200)
+        plt.show()
+    else:
+        plt.clf()
+
+
+def load_all(dataset, savedir):
     all_inputs = {}
     all_labels = {}
     all_weights = {}
@@ -224,27 +417,7 @@ def compare_preds(dataset, savedir):
                     )
                 else:
                     target_dict[key] = current_array
-
-    similarities = np.array([])
-    rmses = np.array([])
-    for labels, weights, preds in zip(
-        all_labels["vint"], all_weights["vint"], all_preds["vint"],
-    ):
-        temp_labels = labels * weights
-        temp_preds = preds * weights
-        similarity = ssim(temp_labels, temp_preds)
-        similarities = np.append(similarities, similarity)
-        rmse = np.sqrt(np.mean((temp_labels-temp_preds)**2))
-        rmses = np.append(rmses, rmse)
-    vmin, vmax = dataset.model.properties['vp']
-    rmses *= vmax - vmin
-
-    print("Average SSIM:", np.mean(similarities))
-    print("Standard deviation on SSIM:", np.std(similarities))
-    print("Average RMSE:", np.mean(rmses))
-    print("Standard deviation on RMSE:", np.std(rmses))
-
-    return all_inputs, all_labels, all_weights, all_preds, similarities
+    return all_inputs, all_labels, all_weights, all_preds
 
 
 def plot_example(dataset, filename, figure_name, plot=True):
@@ -298,6 +471,7 @@ def plot_example(dataset, filename, figure_name, plot=True):
 
     src_pos, rec_pos = dataset.acquire.set_rec_src()
     _, cmps = sortcmp(None, src_pos, rec_pos)
+    cmps = cmps[10:-10]
     cmps /= 1000
     depth /= 1000
 
@@ -338,7 +512,7 @@ def plot_example(dataset, filename, figure_name, plot=True):
             else:
                 mask = weights['vdepth']
             if row_name == 'vrms':
-                vmax_ = 2100
+                vmax_ = 2500
             else:
                 vmax_ = None
             output_ims = col_meta[row_name].plot(
@@ -440,6 +614,16 @@ def plot_example(dataset, filename, figure_name, plot=True):
                 fc='none',
             )
             ax.add_patch(rect)
+        if label_name == 'vrms':
+            gather = inputs['shotgather'][:, :, data.shape[1] // 2, 0]
+            velocities = np.linspace(vmin, vmax, 100)
+            line_ax.imshow(
+                semblance_gather(gather, time, offsets, velocities),
+                aspect='auto',
+                cmap='Greys',
+                extent=[vmin/1000, vmax/1000, y_max, y_min],
+                alpha=.8,
+            )
         line_ax.set_xlim(vmin/1000, vmax/1000)
         line_ax.set_ylim(y_max, y_min)
         line_ax.set_yticklabels([])
@@ -505,7 +689,7 @@ def plot_example(dataset, filename, figure_name, plot=True):
     for i, current_ticks in enumerate(ticks):
         cax = fig.add_subplot(gs[i+2, -1])
         cbar = plt.colorbar(axs[i+3].images[0], cax=cax)
-        cbar.ax.set_ylabel(f"Velocity (km/s)")
+        cbar.ax.set_ylabel("Velocity (km/s)")
         cbar.set_ticks(current_ticks)
         cbar.set_ticklabels(current_ticks/1000)
 
@@ -522,7 +706,7 @@ def plot_example(dataset, filename, figure_name, plot=True):
         plt.text(x0, y0-.02*height, letter, va='bottom')
 
     plt.savefig(
-        join(FIGURES_DIR, figure_name + '.png'), bbox_inches="tight", dpi=1200,
+        join(FIGURES_DIR, figure_name + '.png'), bbox_inches="tight", dpi=1000,
     )
     if plot:
         plt.gcf().set_dpi(200)
@@ -534,21 +718,28 @@ def plot_example(dataset, filename, figure_name, plot=True):
 def load_events(logdir):
     data = []
     for i in listdir(logdir):
+        if int(i) in IGNORE_NNS:
+            continue
         current_logdir = join(logdir, i)
         events_path = [
             path for path in listdir(current_logdir) if "events" in path
         ]
-        assert len(events_path) == 1
-        events_path = join(current_logdir, events_path[0])
-        current_data = pd.DataFrame([])
-        events = summary_iterator(events_path)
-        for event in events:
-            if hasattr(event, 'step'):
-                step = event.step
-                for value in event.summary.value:
-                    column = value.tag
-                    value = value.simple_value
-                    current_data.loc[step, column] = np.log10(value)
+        if events_path:
+            events_path = join(current_logdir, events_path[-1])
+            current_data = pd.DataFrame([])
+            events = summary_iterator(events_path)
+            for event in events:
+                if hasattr(event, 'step'):
+                    step = event.step
+                    for value in event.summary.value:
+                        column = value.tag
+                        value = value.simple_value
+                        current_data.loc[step, column] = np.log10(value)
+        else:
+            events_path = join(logdir, 'progress.csv')
+            assert exists(events_path)
+            current_data = pd.read_csv(events_path)
+            current_data = np.log10(current_data)
         data.append(current_data)
     data = pd.concat(data)
     by_index = data.groupby(data.index)
@@ -581,7 +772,11 @@ def plot_ensemble(dataset, output_name, filename, plot):
     ensemble = []
     savedirs = [
         dir for dir in listdir(dataset.datatest)
-        if "EndResults_" in dir and "std" not in dir
+        if (
+            "EndResults_" in dir
+            and "std" not in dir
+            and int(dir.split('_')[-1]) not in IGNORE_IDX
+        )
     ]
     for savedir in savedirs:
         preds = dataset.generator.read_predictions(filename, savedir)
@@ -592,15 +787,19 @@ def plot_ensemble(dataset, output_name, filename, plot):
     std = std[output_name]
 
     similarities = np.array([])
+    rmses = np.array([])
     for pred in ensemble:
-        similarity = ssim(mean*weight, pred*weight)
+        similarity = ssim(label*weight, pred*weight)
         similarities = np.append(similarities, similarity)
+        rmse = np.sqrt(np.mean((label*weight-pred*weight)**2))
+        rmses = np.append(rmses, rmse)
+    vmin, vmax = dataset.model.properties['vp']
+    rmses *= vmax - vmin
 
     ref = labels['ref']
     crop_top = int(np.nonzero(ref.astype(bool).any(axis=1))[0][0] * .95)
     dh = dataset.model.dh
     dt = dataset.acquire.dt * dataset.acquire.resampling
-    vmin, vmax = dataset.model.properties['vp']
     diff = vmax - vmin
     water_v = float(labels['vint'][0, 0])*diff + vmin
     tdelay = dataset.acquire.tdelay
@@ -618,6 +817,7 @@ def plot_ensemble(dataset, output_name, filename, plot):
 
     src_pos, rec_pos = dataset.acquire.set_rec_src()
     _, cmps = sortcmp(None, src_pos, rec_pos)
+    cmps = cmps[10:-10]
     cmps /= 1000
     if output_name == 'vdepth':
         dh = dataset.model.dh
@@ -632,7 +832,11 @@ def plot_ensemble(dataset, output_name, filename, plot):
         end = (len(label)-1)*dt + start
 
     far = np.argsort(similarities)
+    print("Farthest SSIMs:", similarities[far[:3]])
+    print("Farthest RMSEs:", rmses[far[:3]])
     closest = np.argmax(similarities)
+    print("Closest SSIM:", similarities[closest])
+    print("Closest RMSE:", rmses[closest])
     arrays = np.array(
         [
             [label, ensemble[closest], std],
@@ -847,6 +1051,7 @@ def plot_real_models(dataset, pretrained, preds, plot=True):
 
     src_pos, rec_pos = dataset.acquire.set_rec_src()
     _, cmps = sortcmp(None, src_pos, rec_pos)
+    cmps = cmps[10:-10]
 
     resampling = dataset.acquire.resampling
     dt = dataset.acquire.dt * resampling
@@ -958,6 +1163,7 @@ def plot_real_stacks(dataset, inputs, preds, plot=True):
 
     src_pos, rec_pos = dataset.acquire.set_rec_src()
     _, cmps = sortcmp(None, src_pos, rec_pos)
+    cmps = cmps[10:-10]
 
     data_meta = deepcopy(dataset.inputs['shotgather'])
     data_meta.acquire.singleshot = True
@@ -1104,8 +1310,8 @@ def plot_semblance(dataset, plot=True):
 
     fig, axs = plt.subplots(
         nrows=3,
-        ncols=2,
-        figsize=[3.33, 8],
+        ncols=3,
+        figsize=[4.33, 8],
         sharex='col',
         sharey=True,
         gridspec_kw={'wspace': .05},
@@ -1117,7 +1323,7 @@ def plot_semblance(dataset, plot=True):
     for i, cmp in enumerate([250, 1000, 1750]):
         temp_shotgather = shotgather[..., cmp, 0]
         temp_shotgather /= np.amax(temp_shotgather)
-        vmax = 6E-1
+        vmax = 4E-1
         axs[i, 0].imshow(
             temp_shotgather,
             aspect='auto',
@@ -1153,6 +1359,17 @@ def plot_semblance(dataset, plot=True):
             )
         axs[i, 1].set_xlim([velocities.min() / 1000, velocities.max() / 1000])
 
+        v = preds['vrms'][:, cmp]
+        corrected = nmo_correction(temp_shotgather, times, offsets, v)
+        axs[i, 2].imshow(
+            corrected,
+            aspect='auto',
+            cmap='Greys',
+            extent=extent_gather,
+            vmin=0,
+            vmax=vmax,
+        )
+
     for ax in axs.flatten():
         plt.sca(ax)
         plt.minorticks_on()
@@ -1175,10 +1392,11 @@ def plot_semblance(dataset, plot=True):
 
     axs[-1, 0].set_xlabel("$h$ (km)")
     axs[-1, 1].set_xlabel("Velocity (km/s)")
+    axs[-1, 2].set_xlabel("$h$ (km)")
     for ax in axs[:, 0]:
         ax.set_ylabel("$t$ (s)")
 
-    for ax, letter in zip(axs.T.flatten(), range(ord('a'), ord('f')+1)):
+    for ax, letter in zip(axs.T.flatten(), range(ord('a'), ord('i')+1)):
         letter = f"({chr(letter)})"
         plt.sca(ax)
         x0, _ = plt.xlim()
@@ -1221,7 +1439,11 @@ def plot_ensemble_real(dataset, output_name, plot):
     ensemble = []
     savedirs = [
         dir for dir in listdir(dataset.datatest)
-        if "EndResults_" in dir and "std" not in dir
+        if (
+            "EndResults_" in dir
+            and "std" not in dir
+            and int(dir.split('_')[-1]) not in IGNORE_IDX
+        )
     ]
     for savedir in savedirs:
         preds = dataset.generator.read_predictions(filename, savedir)
@@ -1258,6 +1480,7 @@ def plot_ensemble_real(dataset, output_name, plot):
 
     src_pos, rec_pos = dataset.acquire.set_rec_src()
     _, cmps = sortcmp(None, src_pos, rec_pos)
+    cmps = cmps[10:-10]
     cmps /= 1000
     if output_name == 'vdepth':
         dh = dataset.model.dh
@@ -1272,7 +1495,9 @@ def plot_ensemble_real(dataset, output_name, plot):
         end = (len(ensemble[0])-1)*dt + start
 
     far = np.argsort(similarities)
+    print("Farthest SSIMs:", similarities[far[:3]])
     closest = np.argmax(similarities)
+    print("Closest SSIM:", similarities[closest])
     arrays = np.array(
         [ensemble[closest], std, *[ensemble[i] for i in far[:3]]]
     )
@@ -1282,7 +1507,7 @@ def plot_ensemble_real(dataset, output_name, plot):
         if i != 1:
             array = meta.postprocess(array)
             cmap = 'jet'
-            vmin, vmax = 1400, 3100
+            vmin, vmax = 1400, 3500
         else:
             vmin, vmax = dataset.model.properties["vp"]
             array = array * (vmax-vmin)
@@ -1343,6 +1568,392 @@ def plot_ensemble_real(dataset, output_name, plot):
 
     plt.savefig(
         join(FIGURES_DIR, f"ensemble_{output_name}_real.png"),
+        bbox_inches="tight",
+        dpi=1200,
+    )
+    if plot:
+        plt.gcf().set_dpi(200)
+        plt.show()
+    else:
+        plt.clf()
+
+
+def plot_examples_steep(dataset, plot=True):
+    toinputs = []
+    tooutputs = ['vint']
+
+    fig, axs = plt.subplots(
+        nrows=3,
+        ncols=1,
+        figsize=[3.3, 6],
+        constrained_layout=False,
+    )
+
+    meta = dataset.outputs['vint']
+
+    dt = dataset.acquire.dt * dataset.acquire.resampling
+    vmin, vmax = dataset.model.properties['vp']
+    diff = vmax - vmin
+    tdelay = dataset.acquire.tdelay
+    src_pos, rec_pos = dataset.acquire.set_rec_src()
+    _, cmps = sortcmp(None, src_pos, rec_pos)
+    cmps = cmps[10:-10]
+    cmps /= 1000
+
+    similarities = compare_preds(dataset, "Steep")
+    for percentile, row_axs in zip([90, 50, 10], axs):
+        score = np.percentile(
+            similarities, percentile, interpolation="higher",
+        )
+        idx = np.argwhere(score == similarities)[0, 0]
+        print(f"SSIM {percentile}th percentile: {score} for example {idx}.")
+
+        filename = dataset.files["test"][idx]
+
+        _, label, weight, filename = dataset.get_example(
+            filename=filename,
+            phase='test',
+            toinputs=toinputs,
+            tooutputs=tooutputs,
+        )
+        label = label['vint']
+        label = meta.postprocess(label)
+        weight = weight['vint']
+
+        pred = dataset.generator.read_predictions(filename, "Steep")
+        pred = pred['vint']
+        pred = meta.postprocess(pred)
+        std = dataset.generator.read_predictions(filename, "Steep_std")
+        std = std['vint'] * diff
+
+        crop_top = np.nonzero(np.diff(label, axis=0).any(axis=1))[0][1] * .95
+        crop_top = int(crop_top)
+        label = label[crop_top:]
+        weight = weight[crop_top:]
+        pred = pred[crop_top:]
+        std = std[crop_top:]
+
+        start_time = crop_top*dt - tdelay
+        time = np.arange(len(label))*dt + start_time
+
+        for array, ax in zip([label], [row_axs]):
+            im, = meta.plot(array, weights=weight, axs=[ax])
+            im.set_extent(
+                [cmps.min(), cmps.max(), time.max(), time.min()]
+            )
+            ax.set_title("")
+            cbar = im.colorbar
+            if cbar is not None:
+                cbar.remove()
+
+    for ax in axs[:-1].flatten():
+        ax.set_xticklabels([])
+    axs[-1].set_xlabel("$v_\\mathrm{int}(t, x)$ (km/s)")
+    for ax in axs[:]:
+        ax.set_ylabel("$t$ (s)")
+    for ax in axs.flatten():
+        ax.tick_params(which='minor', length=2)
+        ax.minorticks_on()
+        ax.yaxis.set_tick_params(which='both', labelleft=True)
+    for ax in [axs[-1]]:
+        ax.set_xlabel("$x$ (km)")
+
+    ticks = np.arange(2000, 5000, 1000)
+    cax = fig.add_subplot(3, 1, 1)
+    left, bottom, width, height = cax.get_position().bounds
+    bottom += 1.2 * height
+    height /= 8
+    width /= 2
+    left += width / 2
+    cax.set_position([left, bottom, width, height])
+    cbar = plt.colorbar(axs[0].images[0], cax=cax, orientation='horizontal')
+    cbar.ax.set_xlabel("$v_\\mathrm{int}(t, x)$ (km/s)")
+    cbar.ax.xaxis.set_label_position('top')
+    cbar.ax.xaxis.set_ticks_position('top')
+    cbar.set_ticks(ticks)
+    cbar.set_ticklabels(ticks/1000)
+
+    plt.savefig(
+        join(FIGURES_DIR, 'examples_steep.png'), bbox_inches="tight", dpi=1000,
+    )
+    if plot:
+        plt.gcf().set_dpi(200)
+        plt.show()
+    else:
+        plt.clf()
+
+
+def plot_marmousi(dataset, plot=True):
+    compare_preds(dataset, "Steep")
+
+    filename = join(dataset.basepath, dataset.name, "test", "example_0")
+    inputs, labels, _ = dataset.generator.read(filename)
+    preds = dataset.generator.read_predictions(filename, "Steep")
+    preds = {name: preds[name] for name in TOOUTPUTS}
+
+    fig, axs = plt.subplots(
+        ncols=2,
+        nrows=2,
+        figsize=[4.33, 4],
+        constrained_layout=False,
+        gridspec_kw={"width_ratios": [95, 5], "hspace": .3, "wspace": .05},
+    )
+    for ax in axs[1:, 1]:
+        ax.remove()
+    cax = axs[0, 1]
+    axs = axs[:, 0]
+    for shared_axes in [cax.get_shared_x_axes(), cax.get_shared_y_axes()]:
+        shared_axes.remove(cax)
+
+    src_pos, rec_pos = dataset.acquire.set_rec_src()
+    _, cmps = sortcmp(None, src_pos, rec_pos)
+    # cmps = cmps[10:-10]
+
+    resampling = dataset.acquire.resampling
+    dt = dataset.acquire.dt * resampling
+    tdelay = dataset.acquire.tdelay
+    offsets = np.arange(
+        dataset.acquire.gmin,
+        dataset.acquire.gmax,
+        dataset.acquire.dg,
+        dtype=float,
+    )
+    offsets *= dataset.model.dh
+
+    ref = preds['ref'] > .1
+    crop_top = int(np.nonzero(ref.any(axis=1))[0][0] * .95)
+    start_time = crop_top*dt - tdelay
+    END_TIME = 3
+    crop_bottom = int((END_TIME+tdelay) / dt)
+
+    vint_meta = dataset.outputs['vint']
+
+    props, *_ = dataset.model.generate_model()
+    label_vint, _ = dataset.outputs['vint'].generate(None, props)
+    label_vint, _ = dataset.outputs['vint'].preprocess(label_vint, None)
+    label_vint = vint_meta.postprocess(label_vint)
+    pred_vint = vint_meta.postprocess(preds['vint'])
+    label_vint = label_vint[crop_top:crop_bottom]
+    pred_vint = pred_vint[crop_top:crop_bottom]
+
+    vint_meta.plot(
+        label_vint, axs=[axs[0]], vmin=1500, vmax=4500, cmap='inferno',
+    )
+    vint_meta.plot(
+        pred_vint, axs=[axs[1]], vmin=1500, vmax=4500, cmap='inferno',
+    )
+
+    extent = [cmps.min()/1000, cmps.max()/1000, END_TIME, start_time]
+
+    for ax in axs:
+        ax.images[0].set_extent(extent)
+        ax.set_title("")
+        if ax.images:
+            cbar = ax.images[-1].colorbar
+            if cbar is not None:
+                cbar.remove()
+
+    for ax in axs[:-1]:
+        ax.set_xticklabels([])
+
+    for ax in axs:
+        ax.tick_params(which='minor', length=2)
+        ax.minorticks_on()
+
+    plt.xlabel("$x$ (km)")
+    for ax in axs:
+        ax.set_ylabel("$t$ (s)")
+
+    cbar = plt.colorbar(axs[0].images[0], cax=cax)
+    cbar.ax.set_ylabel("Velocity (km/s)")
+    cbar.set_ticks(range(2000, 5000, 1000))
+    cbar.set_ticklabels(range(2, 5, 1))
+
+    for ax, letter in zip(axs, range(ord('a'), ord('b')+1)):
+        letter = f"({chr(letter)})"
+        plt.sca(ax)
+        x0, _ = plt.xlim()
+        y1, y0 = plt.ylim()
+        height = y1 - y0
+        plt.text(x0, y0-.02*height, letter, va='bottom')
+
+    plt.savefig(
+        join(FIGURES_DIR, "marmousi.png"), bbox_inches="tight", dpi=1200,
+    )
+    if plot:
+        plt.gcf().set_dpi(200)
+        plt.show()
+    else:
+        plt.clf()
+
+
+def plot_ensemble_marmousi(dataset, plot):
+    output_name = 'vint'
+    filename = join(dataset.datatest, 'example_0')
+
+    fig, axs = plt.subplots(
+        nrows=2,
+        ncols=4,
+        figsize=[6.5, 3.33],
+        constrained_layout=False,
+        gridspec_kw={"width_ratios": [*(1 for _ in range(3)), .2]},
+    )
+    cax_std = axs[0, -1]
+    cax = axs[1, -1]
+    axs = axs[:, :-1]
+
+    meta = dataset.outputs[output_name]
+
+    _, labels, weights, _ = dataset.get_example(
+        filename=filename,
+        phase='test',
+        toinputs=TOINPUTS,
+        tooutputs=TOOUTPUTS,
+    )
+    label = labels[output_name]
+    weight = weights[output_name]
+
+    ensemble = []
+    savedirs = [
+        dir for dir in listdir(dataset.datatest)
+        if (
+            "Steep_" in dir
+            and "std" not in dir
+            and int(dir.split('_')[-1]) not in IGNORE_IDX
+        )
+    ]
+    for savedir in savedirs:
+        preds = dataset.generator.read_predictions(filename, savedir)
+        ensemble.append(preds[output_name])
+    mean = dataset.generator.read_predictions(filename, "Steep")
+    mean = mean[output_name]
+    std = dataset.generator.read_predictions(filename, "Steep_std")
+    std = std[output_name]
+
+    similarities = np.array([])
+    rmses = np.array([])
+    for pred in ensemble:
+        similarity = ssim(label*weight, pred*weight)
+        similarities = np.append(similarities, similarity)
+        rmse = np.sqrt(np.mean((label*weight-pred*weight)**2))
+        rmses = np.append(rmses, rmse)
+    vmin, vmax = dataset.model.properties['vp']
+    rmses *= vmax - vmin
+
+    ref = labels['ref']
+    crop_top = int(np.nonzero(ref.astype(bool).any(axis=1))[0][0] * .95)
+    dh = dataset.model.dh
+    dt = dataset.acquire.dt * dataset.acquire.resampling
+    diff = vmax - vmin
+    water_v = float(labels['vint'][0, 0])*diff + vmin
+    tdelay = dataset.acquire.tdelay
+    if output_name == 'vdepth':
+        crop_top = int((crop_top-tdelay/dt)*dt/2*water_v/dh)
+        mask = weights['vdepth']
+        crop_bottom = int(np.nonzero((~mask.astype(bool)).all(axis=1))[0][0])
+    else:
+        crop_bottom = None
+    for i, pred in enumerate(ensemble):
+        ensemble[i] = pred[crop_top:crop_bottom]
+    label = label[crop_top:crop_bottom]
+    std = std[crop_top:crop_bottom]
+    weight = weight[crop_top:crop_bottom]
+
+    src_pos, rec_pos = dataset.acquire.set_rec_src()
+    _, cmps = sortcmp(None, src_pos, rec_pos)
+    cmps = cmps[10:-10]
+    cmps /= 1000
+    if output_name == 'vdepth':
+        dh = dataset.model.dh
+        src_rec_depth = dataset.acquire.source_depth
+        start = crop_top*dh + src_rec_depth
+        start /= 1000
+        end = (len(labels['vdepth'])-1)*dh + start
+        end /= 1000
+    else:
+        tdelay = dataset.acquire.tdelay
+        start = crop_top*dt - tdelay
+        end = (len(label)-1)*dt + start
+
+    far = np.argsort(similarities)
+    print("Farthest SSIMs:", similarities[far[:3]])
+    print("Farthest RMSEs:", rmses[far[:3]])
+    closest = np.argmax(similarities)
+    print("Closest SSIM:", similarities[closest])
+    print("Closest RMSE:", rmses[closest])
+    arrays = np.array(
+        [
+            [label, ensemble[closest], std],
+            [ensemble[i] for i in far[:3]],
+        ]
+    )
+    for i, (array, ax) in enumerate(
+        zip(arrays.reshape([-1, *label.shape]), axs.flatten())
+    ):
+        if i != 2:
+            array = meta.postprocess(array)
+            cmap = 'inferno'
+            vmin, vmax = 1500, 4500
+        else:
+            vmin, vmax = dataset.model.properties["vp"]
+            array = array * (vmax-vmin)
+            vmin, vmax = 0, 1000
+            cmap = 'afmhot_r'
+        meta.plot(
+            array,
+            weights=None,
+            axs=[ax],
+            ims=[None],
+            vmin=vmin,
+            vmax=vmax,
+            cmap=cmap
+        )
+
+    for ax in axs.flatten():
+        ax.images[0].set_extent([cmps.min(), cmps.max(), end, start])
+    for ax in axs.flatten():
+        ax.tick_params(which='minor', length=2)
+        ax.minorticks_on()
+
+    for ax in axs.flatten():
+        ax.set_title("")
+        if ax.images:
+            cbar = ax.images[-1].colorbar
+            if cbar is not None:
+                cbar.remove()
+
+    for ax in axs[:, 0]:
+        if output_name != 'vdepth':
+            ax.set_ylabel("$t$ (s)")
+        else:
+            ax.set_ylabel("$z$ (km)")
+    for ax in axs[:, 1:].flatten():
+        ax.set_yticklabels([])
+    for ax in axs[-1, :]:
+        ax.set_xlabel("$x$ (km)")
+    for ax in axs[:-1, :].flatten():
+        ax.set_xticklabels([])
+
+    cbar = plt.colorbar(axs[0, -1].images[0], cax=cax_std)
+    cbar.ax.set_ylabel("Standard\ndeviation\n(km/s)")
+    cbar.set_ticks(np.arange(0, 1000, 300))
+    cbar.set_ticklabels(np.around(np.arange(0, 1, .3), 1))
+
+    cbar = plt.colorbar(axs[0, 0].images[0], cax=cax)
+    cbar.ax.set_ylabel("Velocity\n(km/s)")
+    cbar.set_ticks(range(2000, 5000, 1000))
+    cbar.set_ticklabels(range(2, 5, 1))
+
+    for ax, letter in zip(axs.flatten(), range(ord('a'), ord('g')+1)):
+        letter = f"({chr(letter)})"
+        plt.sca(ax)
+        x0, _ = plt.xlim()
+        y1, y0 = plt.ylim()
+        height = y1 - y0
+        plt.text(x0, y0-.02*height, letter, va='bottom')
+
+    plt.savefig(
+        join(FIGURES_DIR, f"ensemble_{output_name}_marmousi.png"),
         bbox_inches="tight",
         dpi=1200,
     )
