@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
-from os.path import listdir, join, exists
+from os import listdir
+from os.path import join, exists
 
 import numpy as np
 import pandas as pd
@@ -8,7 +9,7 @@ from skimage.measure import compare_ssim as ssim
 from tensorflow.compat.v1.train import summary_iterator
 from GeoFlow.SeismicUtilities import stack, vint2vrms
 
-from .constants import IGNORE_NNS
+from vmbtl.postprocess.constants import IGNORE_NNS
 
 
 def compare_preds(dataset, savedir):

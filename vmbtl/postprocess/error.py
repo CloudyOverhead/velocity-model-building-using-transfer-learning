@@ -3,7 +3,7 @@
 import numpy as np
 from matplotlib import pyplot as plt
 
-from .utils import load_all
+from vmbtl.postprocess.utils import load_all
 
 
 def plot_error(dataset, plot=True):

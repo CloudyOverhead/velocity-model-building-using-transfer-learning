@@ -8,8 +8,8 @@ from matplotlib import pyplot as plt
 from skimage.measure import compare_ssim as ssim
 from GeoFlow.SeismicUtilities import sortcmp
 
-from .utils import compare_preds
-from .constants import IGNORE_IDX
+from vmbtl.postprocess.utils import compare_preds
+from vmbtl.postprocess.constants import IGNORE_IDX
 
 
 def plot_examples_steep(dataset, plot=True):
@@ -352,13 +352,11 @@ def plot_ensemble_marmousi(dataset, plot):
 
     cbar = plt.colorbar(axs[0, -1].images[0], cax=cax_std)
     cbar.ax.set_ylabel("Standard\ndeviation\n(km/s)")
-    cbar.set_ticks(np.arange(0, 1000, 300))
-    cbar.set_ticklabels(np.around(np.arange(0, 1, .3), 1))
+    cbar.ax.yaxis.set_major_formatter(lambda x, _: str(round(x/1000, 1)))
 
     cbar = plt.colorbar(axs[0, 0].images[0], cax=cax)
     cbar.ax.set_ylabel("Velocity\n(km/s)")
-    cbar.set_ticks(range(2000, 5000, 1000))
-    cbar.set_ticklabels(range(2, 5, 1))
+    cbar.ax.yaxis.set_major_formatter(lambda x, _: str(round(x/1000)))
 
     for ax, letter in zip(axs.flatten(), range(ord('a'), ord('g')+1)):
         letter = f"({chr(letter)})"

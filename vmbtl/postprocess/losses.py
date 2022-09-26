@@ -4,8 +4,8 @@ import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 
-from .utils import load_events
-from .constants import TABLEAU_COLORS
+from vmbtl.postprocess.utils import load_events
+from vmbtl.postprocess.constants import TABLEAU_COLORS
 
 
 def plot_losses(logdir_1d, params_1d, logdir_2d, params_2d, plot=True):

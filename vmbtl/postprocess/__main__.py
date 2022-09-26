@@ -14,14 +14,14 @@ from vmbtl.architecture import (
 )
 from vmbtl.datasets import Article2D, USGS, Article2DSteep, Marmousi
 
-from .constants import FIGURES_DIR
-from .launch_inference import launch_inference, launch_both_inferences
-from .utils import compare_preds
-from .error import plot_error
-from .examples import plot_example, plot_ensemble
-from .losses import plot_losses
-from .usgs import plot_real_data, plot_semblance, plot_ensemble_real
-from .marmousi import (
+from vmbtl.postprocess.constants import FIGURES_DIR
+from vmbtl.postprocess.launch_inference import launch_inference, launch_both_inferences
+from vmbtl.postprocess.utils import compare_preds
+from vmbtl.postprocess.error import plot_error
+from vmbtl.postprocess.examples import plot_example, plot_ensemble
+from vmbtl.postprocess.losses import plot_losses
+from vmbtl.postprocess.usgs import plot_real_data, plot_semblance, plot_ensemble_real
+from vmbtl.postprocess.marmousi import (
     plot_examples_steep, plot_marmousi, plot_ensemble_marmousi,
 )
 
@@ -41,7 +41,7 @@ _savefig = plt.savefig
 
 def savefig(filename, plot=False):
     _savefig(
-        join(FIGURES_DIR, filename + ".eps"),
+        join(FIGURES_DIR, filename + ".png"),
         bbox_inches="tight",
         dpi=1000,
     )
@@ -112,10 +112,10 @@ def main(args):
             batch_size=1,
         )
 
-    compare_preds(dataset_train, savedir="Training")
-    compare_preds(dataset, savedir="Pretraining")
-    for lr in ['8E-4', '8E-5']:
-        compare_preds(dataset, savedir="NoTransferLearning" + lr)
+    # compare_preds(dataset_train, savedir="Training")
+    # compare_preds(dataset, savedir="Pretraining")
+    # for lr in ['8E-4', '8E-5']:
+    #     compare_preds(dataset, savedir="NoTransferLearning" + lr)
     similarities = compare_preds(dataset, savedir="EndResults")
 
     plot_error(dataset, plot=args.plot)

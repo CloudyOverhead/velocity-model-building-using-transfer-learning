@@ -11,7 +11,7 @@ import numpy as np
 from vmbtl.__main__ import main as global_main
 from vmbtl.architecture import Hyperparameters1D, Hyperparameters2D
 
-from .constants import IGNORE_NNS
+from vmbtl.postprocess.constants import IGNORE_NNS
 
 
 def launch_both_inferences(args, nn, dataset, batch_size=None):

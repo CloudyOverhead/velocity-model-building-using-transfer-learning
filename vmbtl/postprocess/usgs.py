@@ -13,8 +13,8 @@ from GeoFlow.SeismicUtilities import (
     sortcmp, semblance_gather, nmo_correction,
 )
 
-from .utils import data_preprocess, stack_2d
-from .constants import IGNORE_IDX, TABLEAU_COLORS
+from vmbtl.postprocess.utils import data_preprocess, stack_2d
+from vmbtl.postprocess.constants import IGNORE_IDX, TABLEAU_COLORS
 
 
 def plot_real_data(dataset, plot=True):
@@ -527,15 +527,13 @@ def plot_ensemble_real(dataset, output_name, plot):
     for ax in axs[:-1, :].flatten():
         ax.set_xticklabels([])
 
-    cbar = plt.colorbar(axs[0, 0].images[0], cax=cax)
-    cbar.ax.set_ylabel("Velocity\n(km/s)")
-    cbar.set_ticks(range(2000, 5000, 1000))
-    cbar.set_ticklabels(range(2, 5, 1))
-
     cbar = plt.colorbar(axs[1, 0].images[0], cax=cax_std)
     cbar.ax.set_ylabel("Standard\ndeviation\n(km/s)")
-    cbar.set_ticks(np.arange(0, 1000, 300))
-    cbar.set_ticklabels(np.arange(0, 1, .3))
+    cbar.ax.yaxis.set_major_formatter(lambda x, _: str(round(x/1000, 1)))
+
+    cbar = plt.colorbar(axs[0, 0].images[0], cax=cax)
+    cbar.ax.set_ylabel("Velocity\n(km/s)")
+    cbar.ax.yaxis.set_major_formatter(lambda x, _: str(round(x/1000)))
 
     for ax, letter in zip(axs.flatten(), range(ord('a'), ord('g')+1)):
         letter = f"({chr(letter)})"
