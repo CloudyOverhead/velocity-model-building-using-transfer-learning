@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.7120739.svg)](https://doi.org/10.5281/zenodo.7120739)
+
 # Hierarchical transfer learning for deep learning velocity model building
 
 ## Prerequisites and installation
