@@ -13,17 +13,17 @@ REQUIREMENTS = [
     GITHUB_REQUIREMENT.format(
         author="gfabieno",
         name="SeisCL",
-        version="eef941d4e31b5fa0dc7823e491e0575ad1e1f423",
+        version="49595bb9deaf8a4d90e6e2ee09adb378e5ed246e",
     ),
     GITHUB_REQUIREMENT.format(
         author="gfabieno",
         name="ModelGenerator",
-        version="v0.1.1",
+        version="v1.0.0",
     ),
     GITHUB_REQUIREMENT.format(
         author="gfabieno",
         name="Deep_2D_velocity",
-        version="57b425ae46fc1343fab06cb03fe0e11175922bf1",
+        version="v1.0",
     ),
     "scikit-image==0.14.2",
     "segyio",
