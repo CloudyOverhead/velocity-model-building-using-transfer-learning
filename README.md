@@ -14,8 +14,6 @@ This should install all required packages, including [SeisCL](https://github.com
 
 ## Generating the seismic data and training the neural networks
 
-This section may be skipped entirely if you download the files from [Dataverse]() and put them at the root of the project repository.
-
 ### Generating velocity models and the seismic data
 
 Use the following commands to generate each dataset:
@@ -53,7 +51,7 @@ Use the following commands to produce the train the neural networks. Make sure t
 
 ## Reproducing the figures
 
-To generate the figures, use the following command, which will produce the predictions on the test examples as well. If you have downloaded the files from [Dataverse](), use the `--no-inference` option.
+To generate the figures, use the following command, which will produce the predictions on the test examples as well.
 
 ```python vmbtl/postprocess```
 
