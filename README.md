@@ -17,11 +17,17 @@ This section may be skipped entirely if you download the files from [Dataverse](
 ### Generating velocity models and the seismic data
 
 Use the following commands to generate each dataset:
+
 ```python vmbtl --dataset Article1D --generate```
+
 ```python vmbtl --dataset Article2D --generate```
+
 ```python vmbtl --dataset USGS --generate```
+
 ```python vmbtl --dataset Article1DSteep --generate```
+
 ```python vmbtl --dataset Article2DSteep --generate```
+
 ```python vmbtl --dataset Marmousi --generate```
 
 You may use the `--gpus` option to control the quantity of GPUs dedicated to generation and the `--plot` option to ensure the results are correct.
