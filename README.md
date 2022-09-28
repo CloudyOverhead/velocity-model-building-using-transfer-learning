@@ -7,7 +7,12 @@
 Install the latest version of `git`. **Make sure to update `git` if it is already installed.**
 
 Clone this repository through:
+
 ```git clone https://github.com/CloudyOverhead/velocity-model-building-using-transfer-learning.git```
+
+Navigate to the package's directory and run:
+
+```pip install .```
 
 This should install all required packages, including [SeisCL](https://github.com/gfabieno/SeisCL). However, please follow the additional steps for completing the installation of SeisCL in the package's `README.md`.
 
