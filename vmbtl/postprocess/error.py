@@ -80,4 +80,4 @@ def plot_error(dataset, plot=True):
         height = y1 - y0
         plt.text(x0, y0-.02*height, letter, va='bottom')
 
-    plt.savefig("error", plot=plot)
+    plt.savefig("Figure 8", plot=plot)

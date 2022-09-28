@@ -92,4 +92,4 @@ def plot_losses(logdir_1d, params_1d, logdir_2d, params_2d, plot=True):
     plt.grid(which='major', alpha=.6)
     plt.grid(which='minor', alpha=.15)
 
-    plt.savefig("losses", plot=plot)
+    plt.savefig("Figure 2", plot=plot)

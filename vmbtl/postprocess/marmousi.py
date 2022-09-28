@@ -107,7 +107,7 @@ def plot_examples_steep(dataset, plot=True):
     cbar.set_ticks(ticks)
     cbar.set_ticklabels(ticks/1000)
 
-    plt.savefig('examples_steep', plot=plot)
+    plt.savefig('Figure 14', plot=plot)
 
 
 def plot_marmousi(dataset, plot=True):
@@ -203,7 +203,7 @@ def plot_marmousi(dataset, plot=True):
         height = y1 - y0
         plt.text(x0, y0-.02*height, letter, va='bottom')
 
-    plt.savefig("marmousi", plot=plot)
+    plt.savefig("Figure 15", plot=plot)
 
 
 def plot_ensemble_marmousi(dataset, plot):
@@ -366,4 +366,4 @@ def plot_ensemble_marmousi(dataset, plot):
         height = y1 - y0
         plt.text(x0, y0-.02*height, letter, va='bottom')
 
-    plt.savefig(f"ensemble_{output_name}_marmousi", plot=plot)
+    plt.savefig("Figure 16", plot=plot)

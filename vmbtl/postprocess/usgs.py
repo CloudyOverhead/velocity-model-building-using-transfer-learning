@@ -146,7 +146,7 @@ def plot_real_models(dataset, pretrained, preds, plot=True):
         height = y1 - y0
         plt.text(x0, y0-.02*height, letter, va='bottom')
 
-    plt.savefig("real_models", plot=plot)
+    plt.savefig("Figure 9", plot=plot)
 
 
 def plot_real_stacks(dataset, inputs, preds, plot=True):
@@ -244,7 +244,7 @@ def plot_real_stacks(dataset, inputs, preds, plot=True):
         height = y1 - y0
         plt.text(x0, y0-.02*height, letter, va='bottom')
 
-    plt.savefig("real_stacks", plot=plot)
+    plt.savefig("Figure 13", plot=plot)
 
 
 def plot_semblance(dataset, plot=True):
@@ -395,10 +395,10 @@ def plot_semblance(dataset, plot=True):
         bbox_to_anchor=(1.0, 1.0),
     )
 
-    plt.savefig("semblance", plot=plot)
+    plt.savefig("Figure 12", plot=plot)
 
 
-def plot_ensemble_real(dataset, output_name, plot):
+def plot_ensemble_real(dataset, output_name, figure_name, plot):
     filename = dataset.files["test"][0]
     fig, axs = plt.subplots(
         nrows=5,
@@ -543,4 +543,4 @@ def plot_ensemble_real(dataset, output_name, plot):
         height = y1 - y0
         plt.text(x0, y0-.02*height, letter, va='bottom')
 
-    plt.savefig(f"ensemble_{output_name}_real", plot=plot)
+    plt.savefig(figure_name, plot=plot)

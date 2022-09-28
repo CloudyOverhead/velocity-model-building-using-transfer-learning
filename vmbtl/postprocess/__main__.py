@@ -118,9 +118,14 @@ def main(args):
     #     compare_preds(dataset, savedir="NoTransferLearning" + lr)
     similarities = compare_preds(dataset, savedir="EndResults")
 
-    plot_error(dataset, plot=args.plot)
-
-    for percentile in [10, 50, 90]:
+    plot_losses(
+        logdir_1d=args.logdir_1d,
+        params_1d=Hyperparameters1D(is_training=True),
+        logdir_2d=args.logdir_2d,
+        params_2d=Hyperparameters2D(is_training=True),
+        plot=args.plot,
+    )
+    for i, percentile in zip([3, 4, 5], [50, 90, 10]):
         score = np.percentile(
             similarities, percentile, interpolation="nearest",
         )
@@ -129,33 +134,29 @@ def main(args):
         plot_example(
             dataset=dataset,
             filename=dataset.files["test"][idx],
-            figure_name=f"results_{percentile}th_percentile",
+            figure_name=f"Figure {i}",
             plot=args.plot,
         )
         if percentile == 50:
-            for output_name in ['vint', 'vdepth']:
+            for i, output_name in zip([6, 7], ['vint', 'vdepth']):
                 plot_ensemble(
                     dataset=dataset,
                     output_name=output_name,
+                    figure_name=f"Figure {i}",
                     filename=dataset.files["test"][idx],
                     plot=args.plot,
                 )
-    plot_losses(
-        logdir_1d=args.logdir_1d,
-        params_1d=Hyperparameters1D(is_training=True),
-        logdir_2d=args.logdir_2d,
-        params_2d=Hyperparameters2D(is_training=True),
-        plot=args.plot,
-    )
+    plot_error(dataset, plot=args.plot)
     plot_real_data(
         dataset=dataset_real,
         plot=args.plot,
     )
     plot_semblance(dataset_real, plot=args.plot)
-    for output_name in ['vint', 'vdepth']:
+    for i, output_name in zip([10, 11], ['vint', 'vdepth']):
         plot_ensemble_real(
             dataset=dataset_real,
             output_name=output_name,
+            figure_name=f"Figure {i}",
             plot=args.plot,
         )
     plot_examples_steep(dataset=dataset_steep, plot=args.plot)

@@ -294,7 +294,7 @@ def plot_example(dataset, filename, figure_name, plot=True):
     plt.savefig(figure_name, plot=plot)
 
 
-def plot_ensemble(dataset, output_name, filename, plot):
+def plot_ensemble(dataset, output_name, figure_name, filename, plot):
     fig, axs = plt.subplots(
         nrows=2,
         ncols=4,
@@ -452,4 +452,4 @@ def plot_ensemble(dataset, output_name, filename, plot):
         height = y1 - y0
         plt.text(x0, y0-.02*height, letter, va='bottom')
 
-    plt.savefig(f"ensemble_{output_name}", plot=plot)
+    plt.savefig(figure_name, plot=plot)
